@@ -9,26 +9,33 @@
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
   const root = document.documentElement
 
-  /* ---------- Which moment the clock asks for ---------- */
-  // For each stretch of the day, the moment ids to look for, best first.
-  const PREFS = [
-    [0, 4, ['night', 'a', 'twilight', 'evening', 'predawn']],
-    [4, 6, ['predawn', 'dawn', 'sunrise', 'a', 'morning', 'b', 'day']],
-    [6, 10, ['morning', 'sunrise', 'b', 'dawn', 'day']],
-    [10, 17, ['day', 'b', 'morning', 'golden']],
-    [17, 20, ['sunset', 'golden', 'evening', 'dusk', 'day']],
-    [20, 24, ['night', 'evening', 'twilight', 'dusk', 'a']],
-  ]
-  function clockMoment(t, d = new Date()) {
+  /* ---------- Which moment plays at a minute of the day ---------- */
+  // Each moment has the hour it starts (the schedule the theme's mod follows); it plays until
+  // the next one starts, and the last one runs on past midnight.
+  const minuteNow = (d = new Date()) => d.getHours() * 60 + d.getMinutes()
+  function momentAt(t, min) {
     if (t.moments.length === 1) return 0
-    const h = d.getHours() + d.getMinutes() / 60
-    const row = PREFS.find(r => h >= r[0] && h < r[1]) || PREFS[0]
-    for (const id of row[2]) {
-      const i = t.moments.findIndex(m => m.id === id)
-      if (i >= 0) return i
-    }
-    return t.hero
+    let best = -1
+    t.moments.forEach((m, i) => {
+      if (m.start * 60 <= min && (best < 0 || m.start > t.moments[best].start)) best = i
+    })
+    if (best >= 0) return best
+    let last = 0
+    t.moments.forEach((m, i) => {
+      if (m.start > t.moments[last].start) last = i
+    })
+    return last
   }
+  // The stretches of the day, for drawing: [{ i, from, to }] in minutes, midnight to midnight.
+  function stretches(t) {
+    if (t.moments.length === 1) return [{ i: 0, from: 0, to: 1440 }]
+    const order = t.moments.map((m, i) => ({ i, at: Math.round(m.start * 60) })).sort((a, b) => a.at - b.at)
+    const out = []
+    if (order[0].at > 0) out.push({ i: order.at(-1).i, from: 0, to: order[0].at })
+    order.forEach((o, k) => out.push({ i: o.i, from: o.at, to: k + 1 < order.length ? order[k + 1].at : 1440 }))
+    return out.filter(s => s.to > s.from)
+  }
+  const hhmm = min => String(Math.floor(min / 60) % 24).padStart(2, '0') + ':' + String(Math.round(min % 60)).padStart(2, '0')
 
   /* ---------- The scene behind the page ---------- */
   const layers = [$('s0'), $('s1')]
@@ -51,16 +58,18 @@
 
   /* ---------- State ---------- */
   let pick = 0
-  let moment = clockMoment(THEMES[0])
-  let chosen = false // the visitor picked a moment, so the clock no longer moves it
+  let preview = null // a minute the visitor dragged or played to; null follows the clock
+  let moment = momentAt(THEMES[0], minuteNow())
 
   function apply() {
     const t = THEMES[pick]
+    const min = preview ?? minuteNow()
+    moment = momentAt(t, min)
     const m = t.moments[moment]
     showScene(m.file)
     root.dataset.tone = m.tone
-    $('now').textContent = t.name + (t.moments.length > 1 ? ' · ' + m.name : '')
-    renderPicked()
+    $('now').textContent = t.name + (t.moments.length > 1 ? ' · ' + m.name : '') + (preview === null ? '' : ' · ' + hhmm(min))
+    renderDay(min)
   }
 
   /* ---------- The shelf ---------- */
@@ -79,10 +88,9 @@
   function choose(i) {
     if (i === pick) return
     pick = i
-    moment = clockMoment(THEMES[i])
-    chosen = false
     track.querySelectorAll('.tcard').forEach((b, j) => b.setAttribute('aria-selected', String(j === i)))
     resetSteps()
+    renderPicked()
     apply()
     renderPrompt()
   }
@@ -94,14 +102,13 @@
   const kb = n => (n / 1024 < 1000 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB')
   function renderPicked() {
     const t = THEMES[pick]
-    const now = clockMoment(t)
     $('p-name').textContent = t.name
     $('p-about').textContent = t.about
-    $('pills').innerHTML = t.moments
+    $('segs').innerHTML = stretches(t)
       .map(
-        (m, i) =>
-          '<button class="pill" aria-pressed="' + (i === moment) + '" data-m="' + i + '">' + esc(t.moments.length > 1 ? m.name : 'All day') +
-          (i === now && t.moments.length > 1 ? '<span class="now">now</span>' : '') + '</button>',
+        s =>
+          '<span class="seg" data-i="' + s.i + '" style="left:' + (s.from / 14.4).toFixed(3) + '%;width:' + ((s.to - s.from) / 14.4).toFixed(3) + '%">' +
+          esc(t.moments.length > 1 ? t.moments[s.i].name : 'The same all day') + '</span>',
       )
       .join('')
     const dl = $('dl')
@@ -116,11 +123,46 @@
       $('dl-note').textContent = 'The archive comes with the first release.'
     }
   }
-  $('pills').addEventListener('click', e => {
-    const b = e.target.closest('.pill')
-    if (!b) return
-    moment = Number(b.dataset.m)
-    chosen = true
+  /* ---------- The day line ---------- */
+  function renderDay(min) {
+    const t = THEMES[pick]
+    $('day-time').textContent = hhmm(min)
+    $('day-name').textContent = t.moments.length > 1 ? t.moments[moment].name : 'The same at every hour'
+    $('knob').style.left = (min / 14.4).toFixed(3) + '%'
+    $('scrub').value = String(min)
+    $('segs').querySelectorAll('.seg').forEach(s => s.classList.toggle('on', Number(s.dataset.i) === moment))
+    $('live').setAttribute('aria-pressed', String(preview === null))
+  }
+  // Play the day: an hour a second, from where the line is, once round the clock.
+  let playing = 0
+  let played = 0
+  function stop() {
+    clearInterval(playing)
+    playing = 0
+    $('play').textContent = 'Play the day'
+    $('play').setAttribute('aria-pressed', 'false')
+  }
+  $('play').addEventListener('click', () => {
+    if (playing) return stop()
+    if (preview === null) preview = minuteNow()
+    played = 0
+    $('play').textContent = 'Pause'
+    $('play').setAttribute('aria-pressed', 'true')
+    playing = setInterval(() => {
+      preview = (preview + 5) % 1440
+      played += 5
+      apply()
+      if (played >= 1440) stop()
+    }, 1000 / 12)
+  })
+  $('scrub').addEventListener('input', e => {
+    stop()
+    preview = Number(e.target.value)
+    apply()
+  })
+  $('live').addEventListener('click', () => {
+    stop()
+    preview = null
     apply()
   })
 
@@ -204,13 +246,7 @@
   function tick() {
     const d = new Date()
     $('clock').textContent = dayFmt.format(d) + '  ' + timeFmt.format(d)
-    if (!chosen) {
-      const m = clockMoment(THEMES[pick], d)
-      if (m !== moment) {
-        moment = m
-        apply()
-      }
-    }
+    if (preview === null) apply()
   }
   setInterval(tick, 15000)
 
@@ -256,7 +292,7 @@
   }
 
   /* ---------- Start ---------- */
+  renderPicked()
   tick()
   renderPrompt()
-  apply()
 })()

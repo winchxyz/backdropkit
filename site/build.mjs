@@ -23,6 +23,32 @@ const DIST = path.join(KIT, 'docs')
 const PW = import.meta.resolve('playwright-core')
 const rel = p => path.relative(DIST, p).split(path.sep).join('/')
 
+/* ---------- The editor: docs/editor/ ---------- */
+// editor/app/* is the page, editor/lib/* the exporter (docs/editor/lib/), and the theme mod
+// template from engine/theme-mod/hooks/ goes to docs/editor/mod/hooks/ for its archives.
+// EDITOR_ONLY=1 copies just these and stops: the quick loop while working on the editor.
+function copyDir(from, to) {
+  if (!fs.existsSync(from)) return 0
+  fs.mkdirSync(to, { recursive: true })
+  let n = 0
+  for (const e of fs.readdirSync(from, { withFileTypes: true })) {
+    if (e.isDirectory()) n += copyDir(path.join(from, e.name), path.join(to, e.name))
+    else {
+      fs.copyFileSync(path.join(from, e.name), path.join(to, e.name))
+      n++
+    }
+  }
+  return n
+}
+const ED = path.join(DIST, 'editor')
+fs.rmSync(ED, { recursive: true, force: true })
+const edFiles =
+  copyDir(path.join(KIT, 'editor', 'app'), ED) +
+  copyDir(path.join(KIT, 'editor', 'lib'), path.join(ED, 'lib')) +
+  copyDir(path.join(KIT, 'engine', 'theme-mod', 'hooks'), path.join(ED, 'mod', 'hooks'))
+console.log('docs/editor: ' + edFiles + ' files')
+if (process.env.EDITOR_ONLY) process.exit(0)
+
 /* ---------- Data ---------- */
 const { themes } = await buildData({ quiet: true })
 for (const d of ['scenes', 'thumbs']) fs.rmSync(path.join(DIST, d), { recursive: true, force: true })
@@ -72,6 +98,19 @@ async function measure(svgText, thumb) {
   )
 }
 
+// When each moment starts, in hours: the packed themes' schedule (engine/pack.mjs, the same one
+// the mod follows), and Sunfield's own clock for its moments on the build's summer day.
+const PACKS_FILE = path.join(DIST, 'themes', 'packs.json')
+const packs = fs.existsSync(PACKS_FILE) ? JSON.parse(fs.readFileSync(PACKS_FILE, 'utf8')) : {}
+// Sunfield follows the real sun and changes all the time; its four preview moments get the
+// stretches they stand for on a summer day.
+const SUNFIELD_STARTS = { sunrise: 5, day: 8, sunset: 19, night: 21.5 }
+function startOf(t, m) {
+  if (t.slug === 'sunfield') return SUNFIELD_STARTS[m.id] ?? 0
+  const p = packs[t.slug]?.moments.find(x => x.id === m.id)
+  return p ? p.start : 0
+}
+
 const out = []
 for (const t of themes) {
   const sceneDir = path.join(DIST, 'scenes', t.slug)
@@ -86,7 +125,7 @@ for (const t of themes) {
       fs.mkdirSync(path.join(DIST, 'thumbs'), { recursive: true })
       fs.writeFileSync(path.join(DIST, 'thumbs', t.slug + '.jpg'), Buffer.from(r.jpg.split(',')[1], 'base64'))
     }
-    moments.push({ id: m.id, name: m.name, file: rel(dst), tone: r.luma < 0.5 ? 'dark' : 'light', bytes: m.bytes })
+    moments.push({ id: m.id, name: m.name, file: rel(dst), tone: r.luma < 0.5 ? 'dark' : 'light', bytes: m.bytes, start: startOf(t, m) })
     console.log('  ' + t.slug.padEnd(15) + (m.id || '(one)').padEnd(9) + r.luma.toFixed(2) + ' ' + moments.at(-1).tone)
   }
   const zipFile = path.join(DIST, 'themes', t.slug + '.zip')
@@ -193,7 +232,7 @@ const body = `<div class="scene" aria-hidden="true"><img id="s0" class="on" alt=
 
   <div class="msg bot">
     ${who}
-    <p>Here they are. Pick one and this page switches to it, the way it would look in the app. The times of day under it show the other moments.</p>
+    <p>Here they are. Pick one and this page switches to it, the way it would look in the app at this hour. Drag along the day under it, or play the day, to see every time of day.</p>
     <div class="shelf">
       <div class="shelf-head"><span>${n} themes</span>
         <div class="arrows"><button class="round" id="prev" aria-label="Earlier themes">${I.chevL}</button><button class="round" id="next" aria-label="More themes">${I.chevR}</button></div>
@@ -202,7 +241,19 @@ const body = `<div class="scene" aria-hidden="true"><img id="s0" class="on" alt=
       <div class="picked" id="picked">
         <h3 id="p-name"></h3>
         <p id="p-about"></p>
-        <div class="pills" id="pills" role="group" aria-label="Time of day"></div>
+        <div class="day" id="day">
+          <div class="day-head">
+            <span class="day-time" id="day-time"></span><span class="day-name" id="day-name"></span>
+            <button class="btn" id="play" aria-pressed="false">Play the day</button>
+            <button class="btn" id="live" aria-pressed="true">Now</button>
+          </div>
+          <div class="day-line">
+            <div class="segs" id="segs"></div>
+            <input type="range" id="scrub" min="0" max="1439" step="5" aria-label="Time of day">
+            <div class="knob" id="knob"></div>
+          </div>
+          <div class="ticks" aria-hidden="true"><span>00</span><span>06</span><span>12</span><span>18</span><span>24</span></div>
+        </div>
         <div class="actions">
           <a class="btn primary" id="dl" href="#">${I.download}<span id="dl-label">Download</span></a>
           <a class="btn" href="#install">How to install</a>
