@@ -1,0 +1,365 @@
+{
+  "harbor": {
+    "zip": "harbor.zip",
+    "bytes": 158313,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "day",
+        "name": "Day",
+        "start": 6,
+        "tone": "light",
+        "tint": "#d5e2f9",
+        "opacity": 0.5
+      },
+      {
+        "id": "sunset",
+        "name": "Sunset",
+        "start": 17,
+        "tone": "dark",
+        "tint": "#3c192b",
+        "opacity": 0.6
+      },
+      {
+        "id": "night",
+        "name": "Night",
+        "start": 21,
+        "tone": "dark",
+        "tint": "#171a39",
+        "opacity": 0.55
+      }
+    ]
+  },
+  "snowfall-ridge": {
+    "zip": "snowfall-ridge.zip",
+    "bytes": 152587,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "morning",
+        "name": "Morning",
+        "start": 6,
+        "tone": "light",
+        "tint": "#e4ddee",
+        "opacity": 0.5
+      },
+      {
+        "id": "day",
+        "name": "Day",
+        "start": 10,
+        "tone": "light",
+        "tint": "#dae3f2",
+        "opacity": 0.5
+      },
+      {
+        "id": "night",
+        "name": "Night",
+        "start": 20,
+        "tone": "dark",
+        "tint": "#192140",
+        "opacity": 0.55
+      }
+    ]
+  },
+  "rainy-studio": {
+    "zip": "rainy-studio.zip",
+    "bytes": 154706,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "day",
+        "name": "Day",
+        "start": 6,
+        "tone": "light",
+        "tint": "#dedfe3",
+        "opacity": 0.5
+      },
+      {
+        "id": "evening",
+        "name": "Evening",
+        "start": 17,
+        "tone": "dark",
+        "tint": "#33192b",
+        "opacity": 0.55
+      },
+      {
+        "id": "night",
+        "name": "Night",
+        "start": 21,
+        "tone": "dark",
+        "tint": "#271a22",
+        "opacity": 0.55
+      }
+    ]
+  },
+  "low-orbit": {
+    "zip": "low-orbit.zip",
+    "bytes": 204496,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "a",
+        "name": "Before dawn",
+        "start": 0,
+        "tone": "dark",
+        "tint": "#231f27",
+        "opacity": 0.55
+      },
+      {
+        "id": "b",
+        "name": "Morning",
+        "start": 6,
+        "tone": "dark",
+        "tint": "#26262f",
+        "opacity": 0.55
+      }
+    ]
+  },
+  "tide-line": {
+    "zip": "tide-line.zip",
+    "bytes": 146494,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "sunrise",
+        "name": "Sunrise",
+        "start": 5,
+        "tone": "dark",
+        "tint": "#31203f",
+        "opacity": 0.6
+      },
+      {
+        "id": "sunset",
+        "name": "Sunset",
+        "start": 17,
+        "tone": "dark",
+        "tint": "#3d1824",
+        "opacity": 0.55
+      },
+      {
+        "id": "night",
+        "name": "Night",
+        "start": 21,
+        "tone": "dark",
+        "tint": "#131b33",
+        "opacity": 0.55
+      }
+    ]
+  },
+  "cloud-sea": {
+    "zip": "cloud-sea.zip",
+    "bytes": 154765,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "day",
+        "name": "Day",
+        "start": 6,
+        "tone": "light",
+        "tint": "#d7e3f4",
+        "opacity": 0.5
+      },
+      {
+        "id": "sunset",
+        "name": "Sunset",
+        "start": 17,
+        "tone": "dark",
+        "tint": "#3a182b",
+        "opacity": 0.55
+      },
+      {
+        "id": "night",
+        "name": "Night",
+        "start": 21,
+        "tone": "dark",
+        "tint": "#142038",
+        "opacity": 0.55
+      }
+    ]
+  },
+  "mirror-lake": {
+    "zip": "mirror-lake.zip",
+    "bytes": 230987,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "day",
+        "name": "Day",
+        "start": 6,
+        "tone": "light",
+        "tint": "#d4e2f7",
+        "opacity": 0.5
+      },
+      {
+        "id": "sunset",
+        "name": "Sunset",
+        "start": 17,
+        "tone": "dark",
+        "tint": "#381b33",
+        "opacity": 0.6
+      },
+      {
+        "id": "night",
+        "name": "Night",
+        "start": 21,
+        "tone": "dark",
+        "tint": "#111d3b",
+        "opacity": 0.55
+      }
+    ]
+  },
+  "lavender-slope": {
+    "zip": "lavender-slope.zip",
+    "bytes": 167271,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "day",
+        "name": "Day",
+        "start": 6,
+        "tone": "light",
+        "tint": "#dbe1f7",
+        "opacity": 0.5
+      },
+      {
+        "id": "sunset",
+        "name": "Sunset",
+        "start": 17,
+        "tone": "light",
+        "tint": "#ecd9ed",
+        "opacity": 0.5
+      },
+      {
+        "id": "night",
+        "name": "Night",
+        "start": 21,
+        "tone": "dark",
+        "tint": "#191c3c",
+        "opacity": 0.55
+      }
+    ]
+  },
+  "hill-village": {
+    "zip": "hill-village.zip",
+    "bytes": 190119,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "sunrise",
+        "name": "Sunrise",
+        "start": 5,
+        "tone": "light",
+        "tint": "#f4dad7",
+        "opacity": 0.5
+      },
+      {
+        "id": "day",
+        "name": "Day",
+        "start": 8,
+        "tone": "light",
+        "tint": "#dae2ec",
+        "opacity": 0.5
+      },
+      {
+        "id": "night",
+        "name": "Night",
+        "start": 20,
+        "tone": "dark",
+        "tint": "#161d30",
+        "opacity": 0.55
+      }
+    ]
+  },
+  "sunbeam-wood": {
+    "zip": "sunbeam-wood.zip",
+    "bytes": 419325,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "morning",
+        "name": "Morning",
+        "start": 6,
+        "tone": "light",
+        "tint": "#e3e2ce",
+        "opacity": 0.5
+      },
+      {
+        "id": "day",
+        "name": "Day",
+        "start": 10,
+        "tone": "light",
+        "tint": "#dce5d2",
+        "opacity": 0.5
+      },
+      {
+        "id": "night",
+        "name": "Night",
+        "start": 20,
+        "tone": "dark",
+        "tint": "#0d2237",
+        "opacity": 0.55
+      }
+    ]
+  },
+  "side-street": {
+    "zip": "side-street.zip",
+    "bytes": 149944,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "day",
+        "name": "Day",
+        "start": 6,
+        "tone": "light",
+        "tint": "#dbe1ea",
+        "opacity": 0.5
+      },
+      {
+        "id": "evening",
+        "name": "Evening",
+        "start": 17,
+        "tone": "dark",
+        "tint": "#431d15",
+        "opacity": 0.6
+      },
+      {
+        "id": "night",
+        "name": "Night",
+        "start": 21,
+        "tone": "dark",
+        "tint": "#281e23",
+        "opacity": 0.55
+      }
+    ]
+  },
+  "deep-reef": {
+    "zip": "deep-reef.zip",
+    "bytes": 155189,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "",
+        "name": "All day",
+        "start": 0,
+        "tone": "dark",
+        "tint": "#053343",
+        "opacity": 0.6
+      }
+    ]
+  },
+  "moon-keep": {
+    "zip": "moon-keep.zip",
+    "bytes": 105626,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "",
+        "name": "All day",
+        "start": 0,
+        "tone": "dark",
+        "tint": "#251f31",
+        "opacity": 0.55
+      }
+    ]
+  }
+}

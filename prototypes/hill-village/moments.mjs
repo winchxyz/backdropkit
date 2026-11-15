@@ -1,0 +1,116 @@
+// Hill Village's three moments: one drawing, its light and colours per moment.
+//
+// Surfaces are lit by a simple model (see light() in build.mjs): a material's colour times
+// (ambient + key x how squarely it faces the light), then mixed into the haze of its depth.
+// The key light of each moment (its direction, where it sits, its colour and the shadow colour)
+// is KEYLIGHT at the top of build.mjs; `key` and `amb` here are its strength and the sky's.
+// Tone lists run dark to light.
+
+export const MOMENTS = {
+  sunrise: {
+    sky: [
+      [-20, '#4f3f86'], [2, '#634592'], [14, '#7b4c98'], [26, '#97549a'], [38, '#b45f96'], [48, '#cf6c8e'],
+      [57, '#e57d86'], [65, '#f3917e'], [72, '#fba87a'], [78, '#ffbe7c'], [84, '#ffd186'], [90, '#ffe2a0'], [96, '#fff0c2'], [130, '#fff6dc'],
+    ],
+    glow: { x: 238, y: 86, rx: 74, ry: 30, lift: 16 },
+    sun: { x: 238, y: 87, r: 9, tones: ['#ffd88e', '#ffe9b0', '#fff5d8', '#fffdf2'], halo: '#fff1c4' },
+    clouds: { lit: 'below', tones: ['#7a4c8c', '#904f8e', '#a8588e', '#c0648c', '#d8748a', '#ec8a86', '#fba482', '#ffc286', '#ffdc9c', '#fff0c4'], base: 0.3, rim: 0.5, sun: 0.28 },
+    key: [1.22, 0.86, 0.52],
+    amb: [0.38, 0.27, 0.5],
+    haze: ['#5a3c7c', '#c46c8e', '#ffd2a0'],
+    fog: [0.06, 0.86],
+    sunHaze: '#fff0c0',
+    mist: { tones: ['#f2a894', '#ffc8a4', '#ffe2bc'], o: 0.55 },
+    rim: { tones: ['#e8806a', '#ffb070', '#ffd890', '#fff2c4'], k: 1 },
+    glass: ['#3c2c58', '#7a5482'],
+    lit: ['#ffcc6a', '#f29a48'],
+    litShare: 0.28,
+    toneK: 0.85,
+    lamp: { glass: '#ffd88a', glow: null },
+    water: ['#8a5a8a', '#c47a8c', '#ec9a88', '#ffbe8e', '#ffdca4', '#fff2cc'],
+    glint: ['#ffe8b0', '#fffbea'],
+    smoke: ['#8a6888', '#b48aa4', '#ecbcb4'],
+    bird: '#4a2e52',
+    // rays: [angle (0 right, 90 down), half width, reach] in degrees and cells
+    rays: {
+      color: '#ffe6aa', alpha: 0.3, reach: 190,
+      down: [[98, 2.2, 150], [116, 2, 170], [134, 2.8, 175], [152, 2, 170], [168, 2.4, 160], [64, 2, 120]],
+      up: [[206, 2, 80], [250, 1.8, 70], [318, 2, 75]],
+    },
+    // bloom: [rx, ry, alpha, dy] in the sky, over the far ridge and over the nearer ones
+    bloom: { col: '#ffe4ae', sky: [40, 22, 0.55], ridge: [80, 26, 0.5, 4], near: [110, 34, 0.3, 14] },
+    valleyHaze: [108, 118, 126, 142, '#ffd8b0', 0.32],
+    birdAt: 26,
+    cartAt: 30,
+    stars: null,
+    moon: null,
+  },
+
+  day: {
+    sky: [
+      [-20, '#2f6fc4'], [10, '#3a7ccc'], [30, '#4a8ad2'], [48, '#5c98d8'], [62, '#70a6dc'], [74, '#86b4e0'], [84, '#9ec2e4'], [92, '#b6d0e6'], [100, '#cadbe8'], [130, '#dce6ec'],
+    ],
+    glow: { x: 200, y: 24, rx: 60, ry: 40, lift: 0 },
+    sun: { x: 200, y: 24, r: 6, tones: ['#fff4d8', '#fffaea', '#fffef8', '#ffffff'], halo: '#e8f0f4' },
+    clouds: { lit: 'above', tones: ['#7d94b4', '#8ea4c0', '#a2b6cc', '#b8c8d8', '#ccd8e4', '#dee6ee', '#eef2f6', '#fbfcfd'], base: 0.42, rim: 0.48, sun: 0.1 },
+    key: [0.66, 0.62, 0.54],
+    amb: [0.5, 0.54, 0.64],
+    haze: ['#7a8aa0', '#a8bcd0', '#cad8e4'],
+    fog: [0.04, 0.78],
+    sunHaze: '#eef2f2',
+    mist: { tones: ['#c4d2de', '#d8e2ea', '#eaf0f4'], o: 0.38 },
+    rim: { tones: ['#d8c8a8', '#efe0be', '#fff6dc', '#ffffff'], k: 0.38 },
+    ridgeRim: false,
+    glass: ['#2a3448', '#6a7e98'],
+    lit: ['#ffcc6a', '#f29a48'],
+    litShare: 0,
+    toneK: 0.85,
+    lamp: null,
+    water: ['#4a6a8a', '#5e80a0', '#7698b6', '#90b0ca', '#b0c8dc', '#d6e4ee'],
+    glint: ['#e8f2f8', '#ffffff'],
+    smoke: ['#98a0ac', '#c0c6ce', '#eef0f2'],
+    bird: '#3a3a48',
+    rays: {
+      color: '#fffaf0', alpha: 0.16, reach: 200,
+      down: [[104, 2, 180], [118, 2.6, 190], [132, 2, 190], [146, 2.4, 180]],
+      up: [],
+    },
+    bloom: { col: '#fffaf0', sky: [34, 26, 0.5], ridge: null, near: null },
+    valleyHaze: [108, 118, 126, 142, '#e6eef4', 0.3],
+    birdAt: 20,
+    cartAt: 12,
+    stars: null,
+    moon: null,
+  },
+
+  night: {
+    sky: [
+      [-20, '#070a1c'], [10, '#0a0f26'], [30, '#0e152f'], [48, '#121b38'], [62, '#162241'], [74, '#1b2a4b'], [84, '#213455'], [92, '#283e5e'], [100, '#2e4566'], [130, '#344c6c'],
+    ],
+    glow: { x: 26, y: 52, rx: 50, ry: 36, lift: 0 },
+    sun: null,
+    moon: { x: 26, y: 52, r: 6, tones: ['#9aa6c2', '#c2cce0', '#e0e6f2', '#f6f8fc'], halo: '#3a4c74' },
+    stars: ['#ffffff', '#c8d4f0', '#7f90bc'],
+    clouds: { lit: 'above', tones: ['#141c34', '#18223c', '#1e2a46', '#253250', '#2d3c5a', '#384866', '#465674', '#5a6a88'], base: 0.3, rim: 0.4, sun: 0.12 },
+    key: [0.22, 0.28, 0.42],
+    amb: [0.12, 0.15, 0.27],
+    haze: ['#121a34', '#22305a', '#34466e'],
+    fog: [0.08, 0.82],
+    sunHaze: '#3a4c74',
+    mist: { tones: ['#2c3c64', '#3a4c76', '#4c5e88'], o: 0.5 },
+    rim: { tones: ['#2c3a60', '#3e5078', '#5a6c94', '#7c8cb0'], k: 0.6 },
+    glass: ['#0c1022', '#1e2640'],
+    lit: ['#ffcf6e', '#e8903e'],
+    litShare: 0.78,
+    toneK: 0.65,
+    lamp: { glass: '#fff0b0', glow: ['#5a4a4c', '#8a6a4e', '#c8904c'] },
+    water: ['#0c1226', '#121a32', '#18223e', '#202c4a', '#2a3858', '#38486a'],
+    glint: ['#8a9ac0', '#c8d2ea'],
+    smoke: ['#2c365a', '#3e4a6e', '#5a6890'],
+    bird: null,
+    rays: null,
+    bloom: { col: '#8a9cd0', sky: [36, 30, 0.35], ridge: null, near: null },
+    valleyHaze: [108, 118, 126, 142, '#3a4c78', 0.35],
+    cartAt: 34,
+  },
+}

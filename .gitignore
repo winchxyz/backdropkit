@@ -1,0 +1,19 @@
+node_modules/
+
+# Reference pictures and working notes that are not part of the project
+prototypes/_refs/
+prototypes/_seamfix/
+
+# Working output: only the finished out/*.svg scenes are kept
+prototypes/*/out/*.png
+prototypes/*/out/*/
+
+# The first app shell; only its data tools are used now (by site/build.mjs)
+app/*
+!app/tools/
+app/tools/check.mjs
+app/tools/shots.mjs
+
+# The site page as a claude.ai Artifact fragment
+docs/artifact.html
+site/dist/

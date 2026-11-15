@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BackdropKit</title>
+<meta name="description" content="Animated pixel-art themes for the Claude Code desktop app, free and open source.">
+<meta property="og:title" content="BackdropKit"><meta property="og:description" content="Animated pixel-art themes for the Claude Code desktop app, free and open source.">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:opsz,wght@14..32,400..700&display=swap">
+<style>
+/* Layout: the page is a Claude Code window with a theme playing behind it, the way the theme
+   plays in the desktop app. Top to bottom: a Mac menu bar, the window's title row, a frosted
+   column down the middle holding a chat with winch-ai, and the composer pinned to the bottom.
+   The ink follows the scene: dark ink on pale frost over a light scene, light ink on smoked frost
+   over a dark one. The scene brings all the colour; the interface adds none of its own. */
+:root {
+  --ink: #1b2530;
+  --ink-2: #56626e;
+  --ink-3: #7d8893;
+  --ink-inv: #ffffff;
+  --haze: rgba(244, 248, 252, 0.4);
+  --bubble: rgba(255, 255, 255, 0.86);
+  --glass: rgba(255, 255, 255, 0.34);
+  --glass-line: rgba(255, 255, 255, 0.62);
+  --card: rgba(255, 255, 255, 0.94);
+  --line: rgba(20, 32, 46, 0.1);
+  --bar: rgba(250, 252, 255, 0.5);
+  --title: rgba(246, 249, 252, 0.62);
+  --shade: rgba(22, 34, 52, 0.13);
+  --fade: rgba(236, 242, 248, 0.88);
+  --ground: #1b2430;
+  --text: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Geist Mono", Menlo, monospace;
+  --col: 730px;
+  --bar-h: 26px;
+  --title-h: 38px;
+  color-scheme: light;
+}
+:root[data-tone="dark"] {
+  --ink: #edf1f5;
+  --ink-2: #b0bac6;
+  --ink-3: #8994a1;
+  --ink-inv: #10151c;
+  --haze: rgba(10, 14, 22, 0.44);
+  --bubble: rgba(40, 46, 58, 0.86);
+  --glass: rgba(255, 255, 255, 0.07);
+  --glass-line: rgba(255, 255, 255, 0.12);
+  --card: rgba(26, 30, 39, 0.92);
+  --line: rgba(255, 255, 255, 0.09);
+  --bar: rgba(14, 18, 26, 0.5);
+  --title: rgba(18, 22, 30, 0.6);
+  --shade: rgba(0, 0, 0, 0.32);
+  --fade: rgba(16, 20, 28, 0.86);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+html, body { height: 100% }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 15px/1.45 var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit }
+button { font: inherit; color: inherit }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 6px }
+svg.i { width: 16px; height: 16px; display: block; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round }
+
+/* ---- The scene behind everything ---- */
+.scene { position: fixed; inset: 0; z-index: 0; background: var(--ground) }
+.scene img {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover;
+  opacity: 0; transition: opacity 0.8s ease;
+}
+.scene img.on { opacity: 1 }
+.band {
+  position: fixed; top: 0; bottom: 0; left: 50%; z-index: 1;
+  width: min(920px, 100%); transform: translateX(-50%);
+  background: var(--haze);
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+  backdrop-filter: blur(18px) saturate(1.12);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+
+/* ---- Mac menu bar and the window's title row ---- */
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10;
+  background: var(--bar);
+}
+.top { position: fixed; left: 0; right: 0; top: env(safe-area-inset-top, 0px); z-index: 9 }
+.menubar, .titlebar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-left: max(10px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+}
+.menubar { height: var(--bar-h); background: var(--bar); font-size: 13px; line-height: 1 }
+.titlebar { height: var(--title-h); background: var(--title); border-bottom: 1px solid var(--line); font-size: 14px }
+.side { display: flex; align-items: center; gap: 2px; min-width: 0 }
+.mb-item {
+  display: inline-flex; align-items: center; gap: 7px; height: 21px; padding: 0 9px;
+  border: 0; border-radius: 5px; background: none; text-decoration: none; cursor: default; white-space: nowrap;
+}
+.mb-item:hover { background: var(--glass) }
+.mb-app { font-weight: 650 }
+.mb-now { color: var(--ink-2) }
+.mb-clock { font-variant-numeric: tabular-nums }
+.mark { width: 14px; height: 14px; display: block; flex: none }
+.title { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border: 0; background: none; border-radius: 6px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0 }
+.title:hover, .tb-btn:hover { background: var(--glass) }
+.tb-btn { width: 30px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--ink-2); cursor: pointer; text-decoration: none }
+.tb-btn svg.i { width: 17px; height: 17px }
+
+/* ---- The chat ---- */
+.chat {
+  position: relative; z-index: 2;
+  max-width: calc(var(--col) + 32px); margin: 0 auto;
+  padding-top: calc(var(--bar-h) + var(--title-h) + env(safe-area-inset-top, 0px) + 28px);
+  padding-bottom: 150px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 22px;
+}
+.msg { min-width: 0 }
+.msg p { margin: 0 0 12px }
+.msg p:last-child { margin-bottom: 0 }
+.user { display: flex; justify-content: flex-end }
+.user > div {
+  max-width: 86%; padding: 12px 16px; border-radius: 11px;
+  background: var(--bubble); border: 1px solid var(--line);
+  box-shadow: 0 1px 2px var(--shade);
+}
+.who { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font-size: 13px; font-weight: 600 }
+.who .mark { width: 15px; height: 15px }
+.bot strong { font-weight: 600 }
+.muted { color: var(--ink-2) }
+.fine { font-size: 12px; color: var(--ink-3); text-align: center; margin: 4px 0 0 }
+
+/* Collapsed tool rows: a line of grey text that opens into what it did. */
+.tool { margin: 2px 0 }
+.tool summary {
+  list-style: none; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: var(--ink-2);
+  padding: 2px 0; border-radius: 6px;
+}
+.tool summary::-webkit-details-marker { display: none }
+.tool summary svg.i { width: 14px; height: 14px; transition: transform 0.2s ease }
+.tool[open] summary svg.i { transform: rotate(90deg) }
+.tool summary:hover { color: var(--ink) }
+.tool-body { margin: 8px 0 4px; padding: 10px 14px; border-left: 2px solid var(--line); color: var(--ink-2); font-size: 14px }
+.tool-body table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums }
+.tool-body td { padding: 3px 12px 3px 0; vertical-align: top }
+.tool-body td:last-child { padding-right: 0; text-align: right; white-space: nowrap }
+.scroll { overflow-x: auto }
+
+/* The task card, as Claude Code shows its plan. */
+.tasks {
+  margin-top: 12px; padding: 12px 14px; border-radius: 11px;
+  background: var(--glass); border: 1px solid var(--glass-line);
+  display: grid; gap: 2px; list-style: none;
+}
+.tasks li { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: start; padding: 4px 0 }
+.tasks .dot { width: 16px; height: 16px; margin-top: 2px; border-radius: 50%; display: grid; place-items: center }
+.tasks .todo { border: 1.5px dashed var(--ink-3) }
+.tasks .done { background: var(--ink); color: var(--ink-inv) }
+.tasks .done svg.i { width: 10px; height: 10px; stroke-width: 2.4 }
+.tasks .sub { display: block; font-size: 13px; color: var(--ink-2); margin-top: 1px }
+
+/* Status line with the working dots. */
+.status { display: inline-flex; align-items: center; gap: 10px; color: var(--ink-2) }
+.dots { display: inline-flex; gap: 3px }
+.dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-2); animation: dot 1.4s ease-in-out infinite }
+.dots i:nth-child(2) { animation-delay: 0.2s }
+.dots i:nth-child(3) { animation-delay: 0.4s }
+@keyframes dot { 0%, 80%, 100% { opacity: 0.25 } 40% { opacity: 1 } }
+.status .t { color: var(--ink-3); font-variant-numeric: tabular-nums }
+
+/* ---- Themes, inside a reply ---- */
+.shelf { margin-top: 14px; display: grid; gap: 12px; min-width: 0 }
+.shelf-head { display: flex; align-items: center; justify-content: space-between; gap: 12px }
+.shelf-head span { font-size: 13px; color: var(--ink-2) }
+.arrows { display: flex; gap: 6px }
+.round {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid var(--glass-line); background: var(--glass); cursor: pointer;
+}
+.round svg.i { width: 15px; height: 15px }
+.track {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 158px; gap: 10px;
+  overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+  padding: 3px 3px 6px; margin: -3px -3px 0; overscroll-behavior-x: contain;
+}
+.track::-webkit-scrollbar { display: none }
+.tcard { scroll-snap-align: start; display: grid; gap: 6px; padding: 0; border: 0; background: none; text-align: left; cursor: pointer }
+.tcard .pic {
+  aspect-ratio: 16 / 10; border-radius: 9px; overflow: hidden; background: var(--shade);
+  box-shadow: 0 1px 3px var(--shade); transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+.tcard img { width: 100%; height: 100%; object-fit: cover; display: block }
+.tcard:hover .pic { transform: translateY(-2px) }
+.tcard[aria-selected="true"] .pic { box-shadow: 0 0 0 2px var(--ink) }
+.tcard span { font-size: 12.5px; font-weight: 500; padding-left: 2px }
+.picked {
+  padding: 14px 16px; border-radius: 12px; background: var(--card); border: 1px solid var(--line);
+  box-shadow: 0 8px 26px var(--shade); display: grid; gap: 10px; min-width: 0;
+}
+.picked h3 { margin: 0; font: 600 17px/1.3 var(--display); letter-spacing: -0.01em }
+.picked p { margin: 0; color: var(--ink-2); font-size: 14px }
+.pills { display: flex; flex-wrap: wrap; gap: 6px }
+.pill { height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; border: 1px solid var(--line); background: transparent; cursor: pointer }
+.pill[aria-pressed="true"] { background: var(--ink); color: var(--ink-inv); border-color: var(--ink) }
+.pill .now { opacity: 0.65; margin-left: 5px; font-size: 11.5px }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 2px }
+.btn {
+  height: 34px; padding: 0 14px; border-radius: 9px; display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13.5px; font-weight: 500; text-decoration: none; cursor: pointer; border: 1px solid var(--line); background: transparent;
+}
+.btn.primary { background: var(--ink); color: var(--ink-inv); border-color: var(--ink) }
+.note { font-size: 12.5px; color: var(--ink-2) }
+
+/* ---- Install prompt ---- */
+.prompt { margin-top: 12px; border-radius: 11px; background: var(--card); border: 1px solid var(--line); overflow: hidden }
+.prompt-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 7px 8px 7px 14px; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--ink-2);
+}
+.prompt pre { margin: 0; padding: 12px 14px; max-height: 210px; overflow: auto; font: 12.5px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: break-word }
+.prompt .btn { height: 26px; padding: 0 10px; font-size: 12.5px }
+
+/* ---- Composer ---- */
+.composer {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 8;
+  padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; justify-items: center; gap: 8px; pointer-events: none;
+  padding-top: 26px;
+}
+.composer::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 50%; z-index: -1;
+  width: min(920px, 100%); transform: translateX(-50%);
+  background: linear-gradient(to bottom, transparent, var(--fade) 46%);
+}
+.box {
+  pointer-events: auto; width: min(100%, calc(var(--col) + 36px));
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+  min-height: 46px; padding: 6px 7px 6px 14px; border-radius: 11px; text-align: left;
+  background: var(--card); border: 1px solid var(--line); cursor: pointer;
+  box-shadow: 0 1px 2px var(--shade), 0 10px 28px var(--shade);
+}
+.box .plus { color: var(--ink-2) }
+.box .plus svg.i { width: 18px; height: 18px }
+.line { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0 }
+.caret { display: inline-block; width: 1.5px; height: 1.1em; margin-left: 1px; vertical-align: -0.18em; background: var(--ink); animation: blink 1.06s steps(1) infinite }
+@keyframes blink { 50% { opacity: 0 } }
+.go {
+  display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px 0 9px;
+  border-radius: 8px; background: var(--ink); color: var(--ink-inv); font-size: 13px; font-weight: 500; white-space: nowrap;
+}
+.go .claude { width: 16px; height: 16px; display: block }
+.under {
+  pointer-events: auto; width: min(100%, calc(var(--col) + 36px));
+  display: flex; justify-content: flex-end; gap: 12px; padding-right: 8px; font-size: 12.5px; color: var(--ink-2);
+}
+
+.arrive { animation: arrive 0.45s ease-out both }
+@keyframes arrive { from { opacity: 0; transform: translateY(8px) } }
+
+@media (max-width: 760px) {
+  .band { -webkit-mask-image: none; mask-image: none }
+  .mb-menu, .mb-now, .tb-extra { display: none }
+  .track { grid-auto-columns: 138px }
+  .user > div { max-width: 92% }
+  .go .label { display: none }
+  .go { padding: 0 9px }
+}
+@media (prefers-reduced-motion: reduce) {
+  .caret, .dots i, .arrive { animation: none }
+  .scene img, .tcard .pic { transition: none }
+}
+</style>
+</head>
+<body>
+<div class="scene" aria-hidden="true"><img id="s0" class="on" alt=""><img id="s1" alt=""></div>
+<div class="band" aria-hidden="true"></div>
+<template id="mark-tpl"><svg class="mark" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1z"/></svg></template>
+
+<header class="top">
+  <nav class="menubar" aria-label="Menu bar">
+    <div class="side">
+      <a class="mb-item mb-app" href="#top"><svg class="mark" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1z"/></svg>winch-ai</a>
+      <a class="mb-item mb-menu" href="#themes">Themes</a>
+      <a class="mb-item mb-menu" href="#install">Install</a>
+      <a class="mb-item mb-menu" href="#editor">Editor</a>
+    </div>
+    <div class="side">
+      <span class="mb-item mb-now" id="now" aria-live="polite"></span>
+      <span class="mb-item mb-clock" id="clock"></span>
+    </div>
+  </nav>
+  <div class="titlebar">
+    <div class="side">
+      <span class="tb-btn" aria-hidden="true"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><rect x="2" y="3" width="12" height="10" rx="2"/><path d="M6 3v10"/></svg></span>
+      <h1 class="title" style="margin:0;font-size:inherit;font-weight:500">Animated themes for Claude Code <svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></h1>
+    </div>
+    <div class="side">
+      <a class="tb-btn" href="https://github.com/winchxyz/backdropkit" target="_blank" rel="noopener" title="Star BackdropKit on GitHub" aria-label="Star BackdropKit on GitHub"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2l1.75 3.6 3.95.55-2.87 2.77.7 3.93L8 11.2l-3.53 1.85.7-3.93L2.3 6.35l3.95-.55z"/></svg></a>
+    </div>
+  </div>
+</header>
+
+<main class="chat" id="chat">
+  <div class="msg user" id="top"><div>What is this?</div></div>
+
+  <div class="msg bot">
+    <div class="who"><svg class="mark" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1z"/></svg>winch-ai</div>
+    <p><strong>BackdropKit</strong> is a set of animated pixel-art themes for the Claude Code desktop app. A theme plays behind your conversation, the way this page plays behind me, and the app's panels take their colour from it.</p>
+    <p>12 of the 14 follow your clock, from night to sunrise, day and sunset. They are made by <a href="https://github.com/winchxyz" target="_blank" rel="noopener">winchxyz</a>, and they are free and open source.</p>
+    <details class="tool"><summary>Loaded 14 themes <svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></summary>
+      <div class="tool-body scroll"><table><tr><td>Sunfield</td><td>Sunrise, Day, Sunset, Night</td></tr><tr><td>Harbor</td><td>Day, Sunset, Night</td></tr><tr><td>Snowfall Ridge</td><td>Morning, Day, Night</td></tr><tr><td>Rainy Studio</td><td>Day, Evening, Night</td></tr><tr><td>Low Orbit</td><td>Before dawn, Morning</td></tr><tr><td>Tide Line</td><td>Sunrise, Sunset, Night</td></tr><tr><td>Cloud Sea</td><td>Day, Sunset, Night</td></tr><tr><td>Mirror Lake</td><td>Day, Sunset, Night</td></tr><tr><td>Lavender Slope</td><td>Day, Sunset, Night</td></tr><tr><td>Hill Village</td><td>Sunrise, Day, Night</td></tr><tr><td>Sunbeam Wood</td><td>Morning, Day, Night</td></tr><tr><td>Side Street</td><td>Day, Evening, Night</td></tr><tr><td>Deep Reef</td><td>All day</td></tr><tr><td>Moon Keep</td><td>All day</td></tr></table></div>
+    </details>
+  </div>
+
+  <div class="msg user" id="themes"><div>Show me the themes</div></div>
+
+  <div class="msg bot">
+    <div class="who"><svg class="mark" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1z"/></svg>winch-ai</div>
+    <p>Here they are. Pick one and this page switches to it, the way it would look in the app. The times of day under it show the other moments.</p>
+    <div class="shelf">
+      <div class="shelf-head"><span>14 themes</span>
+        <div class="arrows"><button class="round" id="prev" aria-label="Earlier themes"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5"/></svg></button><button class="round" id="next" aria-label="More themes"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></button></div>
+      </div>
+      <div class="track" id="track" role="listbox" aria-label="Themes"></div>
+      <div class="picked" id="picked">
+        <h3 id="p-name"></h3>
+        <p id="p-about"></p>
+        <div class="pills" id="pills" role="group" aria-label="Time of day"></div>
+        <div class="actions">
+          <a class="btn primary" id="dl" href="#"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M4.5 7.5L8 11l3.5-3.5M3 13.5h10"/></svg><span id="dl-label">Download</span></a>
+          <a class="btn" href="#install">How to install</a>
+          <span class="note" id="dl-note"></span>
+        </div>
+      </div>
+    </div>
+    <details class="tool"><summary>Checked every scene against the app's player <svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></summary>
+      <div class="tool-body scroll">
+        <p>Each scene is one animated SVG that the desktop app plays by itself, with no script. The app takes up to 131,072 characters; this is the largest moment of each.</p>
+        <table><tr><td>Sunfield</td><td>129.3k</td></tr><tr><td>Harbor</td><td>126.9k</td></tr><tr><td>Snowfall Ridge</td><td>124.7k</td></tr><tr><td>Rainy Studio</td><td>124.7k</td></tr><tr><td>Low Orbit</td><td>112.2k</td></tr><tr><td>Tide Line</td><td>127.4k</td></tr><tr><td>Cloud Sea</td><td>127.8k</td></tr><tr><td>Mirror Lake</td><td>124.3k</td></tr><tr><td>Lavender Slope</td><td>126.1k</td></tr><tr><td>Hill Village</td><td>125.4k</td></tr><tr><td>Sunbeam Wood</td><td>126.7k</td></tr><tr><td>Side Street</td><td>120.7k</td></tr><tr><td>Deep Reef</td><td>123.9k</td></tr><tr><td>Moon Keep</td><td>129.9k</td></tr></table>
+      </div>
+    </details>
+  </div>
+
+  <div class="msg user" id="install"><div>How do I install one?</div></div>
+
+  <div class="msg bot">
+    <div class="who"><svg class="mark" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1z"/></svg>winch-ai</div>
+    <p>Download the archive, then give Claude Code this prompt. It checks what is inside before it installs anything, and asks before it turns off another theme.</p>
+    <ul class="tasks">
+      <li><span class="dot todo" id="dot-1"></span><span><span id="st-1">Download the archive</span><span class="sub">It lands in your Downloads folder.</span></span></li>
+      <li><span class="dot todo" id="dot-2"></span><span>Copy the prompt<span class="sub">It tells Claude Code what to check and where to unpack.</span></span></li>
+      <li><span class="dot todo"></span><span>Paste it into Claude Code<span class="sub">In the Claude desktop app. It installs the theme and tells you when to reload.</span></span></li>
+    </ul>
+    <div class="prompt">
+      <div class="prompt-head"><span>Prompt for Claude Code</span><button class="btn" id="copy">Copy</button></div>
+      <pre id="prompt-text"></pre>
+    </div>
+  </div>
+
+  <div class="msg user" id="editor"><div>Can I make my own?</div></div>
+
+  <div class="msg bot">
+    <div class="who"><svg class="mark" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1z"/></svg>winch-ai</div>
+    <p>Soon. A theme editor is on the way: layers, pixel brushes, motion, light and the time of day, exported as the same kind of archive. It will open from the box below.</p>
+    <div class="status"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Building the theme editor</div>
+  </div>
+
+  <p class="fine" id="fine">Community project, not affiliated with Anthropic. Claude and Claude Code are trademarks of Anthropic. <a href="https://github.com/winchxyz/backdropkit" target="_blank" rel="noopener">Source on GitHub</a></p>
+</main>
+
+<div class="composer">
+  <button class="box" id="compose" aria-label="Build my own Claude Code theme">
+    <span class="plus"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 3v10M3 8h10"/></svg></span>
+    <span class="line"><span id="typed"></span><span class="caret" aria-hidden="true"></span></span>
+    <span class="go"><svg class="claude" viewBox="0 0 24 24" role="img" aria-label="Claude Code"><path fill="#D97757" d="M13.69 10.16L13.87 1.13A0.78 0.78 0 0 1 12.32 0.98L10.71 9.86ZM14.39 11.25L18.06 4.91A0.78 0.78 0 0 1 16.80 3.99L11.95 9.50ZM14.44 12.55L21.98 8.35A0.78 0.78 0 0 1 21.34 6.93L13.21 9.81ZM13.84 13.69L20.78 13.66A0.78 0.78 0 0 1 20.93 12.11L14.14 10.71ZM12.75 14.39L20.64 19.17A0.78 0.78 0 0 1 21.55 17.91L14.50 11.95ZM11.45 14.44L15.23 21.07A0.78 0.78 0 0 1 16.66 20.43L14.19 13.21ZM10.31 13.84L10.20 22.17A0.78 0.78 0 0 1 11.75 22.33L13.29 14.14ZM9.61 12.75L6.29 18.61A0.78 0.78 0 0 1 7.55 19.52L12.05 14.50ZM9.56 11.45L1.65 15.81A0.78 0.78 0 0 1 2.29 17.23L10.79 14.19ZM10.16 10.31L2.72 10.29A0.78 0.78 0 0 1 2.57 11.84L9.86 13.29ZM11.25 9.61L3.69 5.06A0.78 0.78 0 0 1 2.78 6.33L9.50 12.05ZM12.55 9.56L8.97 3.38A0.78 0.78 0 0 1 7.55 4.02L9.81 10.79Z"/><circle cx="12" cy="12" r="3.3" fill="#D97757"/></svg><span class="label">Build</span></span>
+  </button>
+  <div class="under"><span>winch-ai</span><span>BackdropKit</span></div>
+</div>
+
+<script>window.BK = {"THEMES":[{"slug":"sunfield","name":"Sunfield","line":"Sunflowers under a sky that follows the sun.","about":"An animated pixel-art sky over a sunflower field. Stars and a moon at night, the sun rising behind the long cloud bank and setting behind the small cloud. The flowers lean in the wind, torn petals tumble away, and a flock crosses about once a minute.","hero":1,"thumb":"thumbs/sunfield.jpg","zip":{"file":"themes/sunfield.zip","name":"sunfield.zip","bytes":158913},"moments":[{"id":"sunrise","name":"Sunrise","file":"scenes/sunfield/sunfield-sunrise.svg","tone":"dark","bytes":129300},{"id":"day","name":"Day","file":"scenes/sunfield/sunfield-day.svg","tone":"light","bytes":129285},{"id":"sunset","name":"Sunset","file":"scenes/sunfield/sunfield-sunset.svg","tone":"dark","bytes":129295},{"id":"night","name":"Night","file":"scenes/sunfield/sunfield-night.svg","tone":"dark","bytes":129296}]},{"slug":"harbor","name":"Harbor","line":"A fishing harbour seen from the pier.","about":"Boats at their moorings, light glinting on the water, gulls overhead and a lighthouse on the point.","hero":0,"thumb":"thumbs/harbor.jpg","zip":{"file":"themes/harbor.zip","name":"harbor.zip","bytes":158313},"moments":[{"id":"day","name":"Day","file":"scenes/harbor/harbor-day.svg","tone":"light","bytes":126852},{"id":"sunset","name":"Sunset","file":"scenes/harbor/harbor-sunset.svg","tone":"dark","bytes":120733},{"id":"night","name":"Night","file":"scenes/harbor/harbor-night.svg","tone":"dark","bytes":113688}]},{"slug":"snowfall-ridge","name":"Snowfall Ridge","line":"Mountains, spruce and a cabin under snow.","about":"A ridge above a spruce forest and a small cabin. Snow falls in three layers and smoke rises from the chimney.","hero":1,"thumb":"thumbs/snowfall-ridge.jpg","zip":{"file":"themes/snowfall-ridge.zip","name":"snowfall-ridge.zip","bytes":152587},"moments":[{"id":"morning","name":"Morning","file":"scenes/snowfall-ridge/snowfall-ridge-morning.svg","tone":"light","bytes":124748},{"id":"day","name":"Day","file":"scenes/snowfall-ridge/snowfall-ridge-day.svg","tone":"light","bytes":118859},{"id":"night","name":"Night","file":"scenes/snowfall-ridge/snowfall-ridge-night.svg","tone":"dark","bytes":115915}]},{"slug":"rainy-studio","name":"Rainy Studio","line":"A desk by a rainy window.","about":"Drops run down the glass over a soft city. A desk lamp, a few books and steam rising from a mug.","hero":0,"thumb":"thumbs/rainy-studio.jpg","zip":{"file":"themes/rainy-studio.zip","name":"rainy-studio.zip","bytes":154706},"moments":[{"id":"day","name":"Day","file":"scenes/rainy-studio/rainy-studio-day.svg","tone":"light","bytes":115949},{"id":"evening","name":"Evening","file":"scenes/rainy-studio/rainy-studio-evening.svg","tone":"dark","bytes":124083},{"id":"night","name":"Night","file":"scenes/rainy-studio/rainy-studio-night.svg","tone":"dark","bytes":124686}]},{"slug":"low-orbit","name":"Low Orbit","line":"The edge of the Earth, seen from orbit.","about":"A satellite drifts past the curve of the Earth. The line between day and night moves with the clock, and cities glow on the night side.","hero":1,"thumb":"thumbs/low-orbit.jpg","zip":{"file":"themes/low-orbit.zip","name":"low-orbit.zip","bytes":204496},"moments":[{"id":"a","name":"Before dawn","file":"scenes/low-orbit/low-orbit-a.svg","tone":"dark","bytes":103988},{"id":"b","name":"Morning","file":"scenes/low-orbit/low-orbit-b.svg","tone":"dark","bytes":112246}]},{"slug":"tide-line","name":"Tide Line","line":"A low view from the beach.","about":"Waves roll in and leave foam on shining wet sand.","hero":0,"thumb":"thumbs/tide-line.jpg","zip":{"file":"themes/tide-line.zip","name":"tide-line.zip","bytes":146494},"moments":[{"id":"sunrise","name":"Sunrise","file":"scenes/tide-line/tide-line-sunrise.svg","tone":"dark","bytes":125041},{"id":"sunset","name":"Sunset","file":"scenes/tide-line/tide-line-sunset.svg","tone":"dark","bytes":127386},{"id":"night","name":"Night","file":"scenes/tide-line/tide-line-night.svg","tone":"dark","bytes":120874}]},{"slug":"cloud-sea","name":"Cloud Sea","line":"A cliff top above a sea of clouds.","about":"Rock spires rise through the clouds below a grassy cliff edge and a lone pine.","hero":0,"thumb":"thumbs/cloud-sea.jpg","zip":{"file":"themes/cloud-sea.zip","name":"cloud-sea.zip","bytes":154765},"moments":[{"id":"day","name":"Day","file":"scenes/cloud-sea/cloud-sea-day.svg","tone":"light","bytes":125399},{"id":"sunset","name":"Sunset","file":"scenes/cloud-sea/cloud-sea-sunset.svg","tone":"dark","bytes":127849},{"id":"night","name":"Night","file":"scenes/cloud-sea/cloud-sea-night.svg","tone":"dark","bytes":124176}]},{"slug":"mirror-lake","name":"Mirror Lake","line":"A still mountain lake that mirrors the sky.","about":"A wide valley and a lake so calm it holds the whole scene again; the clouds drift in the water as they drift above.","hero":0,"thumb":"thumbs/mirror-lake.jpg","zip":{"file":"themes/mirror-lake.zip","name":"mirror-lake.zip","bytes":230987},"moments":[{"id":"day","name":"Day","file":"scenes/mirror-lake/mirror-lake-day.svg","tone":"light","bytes":121040},{"id":"sunset","name":"Sunset","file":"scenes/mirror-lake/mirror-lake-sunset.svg","tone":"dark","bytes":122813},{"id":"night","name":"Night","file":"scenes/mirror-lake/mirror-lake-night.svg","tone":"dark","bytes":124251}]},{"slug":"lavender-slope","name":"Lavender Slope","line":"Lavender rows rolling down to a valley.","about":"A lavender field running down a slope into a valley under jagged snow peaks.","hero":0,"thumb":"thumbs/lavender-slope.jpg","zip":{"file":"themes/lavender-slope.zip","name":"lavender-slope.zip","bytes":167271},"moments":[{"id":"day","name":"Day","file":"scenes/lavender-slope/lavender-slope-day.svg","tone":"light","bytes":124225},{"id":"sunset","name":"Sunset","file":"scenes/lavender-slope/lavender-slope-sunset.svg","tone":"light","bytes":125887},{"id":"night","name":"Night","file":"scenes/lavender-slope/lavender-slope-night.svg","tone":"dark","bytes":126069}]},{"slug":"hill-village","name":"Hill Village","line":"A village on a forested hillside.","about":"Houses spill down a wooded hill into a valley, and the sun comes up at its far end.","hero":1,"thumb":"thumbs/hill-village.jpg","zip":{"file":"themes/hill-village.zip","name":"hill-village.zip","bytes":190119},"moments":[{"id":"sunrise","name":"Sunrise","file":"scenes/hill-village/hill-village-sunrise.svg","tone":"light","bytes":125375},{"id":"day","name":"Day","file":"scenes/hill-village/hill-village-day.svg","tone":"light","bytes":114926},{"id":"night","name":"Night","file":"scenes/hill-village/hill-village-night.svg","tone":"dark","bytes":114266}]},{"slug":"sunbeam-wood","name":"Sunbeam Wood","line":"Shafts of light in an old forest.","about":"Huge mossy trunks frame a glade. Light slants through the canopy onto grass, a stream, a fallen log and ferns.","hero":1,"thumb":"thumbs/sunbeam-wood.jpg","zip":{"file":"themes/sunbeam-wood.zip","name":"sunbeam-wood.zip","bytes":419325},"moments":[{"id":"morning","name":"Morning","file":"scenes/sunbeam-wood/sunbeam-wood-morning.svg","tone":"light","bytes":126700},{"id":"day","name":"Day","file":"scenes/sunbeam-wood/sunbeam-wood-day.svg","tone":"light","bytes":123699},{"id":"night","name":"Night","file":"scenes/sunbeam-wood/sunbeam-wood-night.svg","tone":"dark","bytes":121762}]},{"slug":"side-street","name":"Side Street","line":"A steep lane in a quiet seaside town.","about":"A residential lane running down to a level crossing, with the roofs of the lower town and the bay beyond.","hero":0,"thumb":"thumbs/side-street.jpg","zip":{"file":"themes/side-street.zip","name":"side-street.zip","bytes":149944},"moments":[{"id":"day","name":"Day","file":"scenes/side-street/side-street-day.svg","tone":"light","bytes":120686},{"id":"evening","name":"Evening","file":"scenes/side-street/side-street-evening.svg","tone":"dark","bytes":120124},{"id":"night","name":"Night","file":"scenes/side-street/side-street-night.svg","tone":"dark","bytes":106787}]},{"slug":"deep-reef","name":"Deep Reef","line":"Under the water, light falling from above.","about":"Rays from the surface, swaying weed, fish and rising bubbles. The same at every hour.","hero":0,"thumb":"thumbs/deep-reef.jpg","zip":{"file":"themes/deep-reef.zip","name":"deep-reef.zip","bytes":155189},"moments":[{"id":"","name":"All day","file":"scenes/deep-reef/deep-reef.svg","tone":"dark","bytes":123851}]},{"slug":"moon-keep","name":"Moon Keep","line":"A castle of spires under a full moon.","about":"Gothic spires on a crag in a cold blue night. The same at every hour.","hero":0,"thumb":"thumbs/moon-keep.jpg","zip":{"file":"themes/moon-keep.zip","name":"moon-keep.zip","bytes":105626},"moments":[{"id":"","name":"All day","file":"scenes/moon-keep/moon-keep.svg","tone":"dark","bytes":129929}]}],"REPO":"https://github.com/winchxyz/backdropkit"}</script>
+<script>// BackdropKit landing: a Claude Code chat with winch-ai, over the theme it is showing.
+// window.BK holds the data the build wrote: { THEMES, REPO }. Each theme is
+// { slug, name, line, about, hero, thumb, zip: { file, name, bytes } | null,
+//   moments: [{ id, name, file, tone, bytes }] }.
+;(() => {
+  const { THEMES, REPO } = window.BK
+  const $ = id => document.getElementById(id)
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+  const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  const root = document.documentElement
+
+  /* ---------- Which moment the clock asks for ---------- */
+  // For each stretch of the day, the moment ids to look for, best first.
+  const PREFS = [
+    [0, 4, ['night', 'a', 'twilight', 'evening', 'predawn']],
+    [4, 6, ['predawn', 'dawn', 'sunrise', 'a', 'morning', 'b', 'day']],
+    [6, 10, ['morning', 'sunrise', 'b', 'dawn', 'day']],
+    [10, 17, ['day', 'b', 'morning', 'golden']],
+    [17, 20, ['sunset', 'golden', 'evening', 'dusk', 'day']],
+    [20, 24, ['night', 'evening', 'twilight', 'dusk', 'a']],
+  ]
+  function clockMoment(t, d = new Date()) {
+    if (t.moments.length === 1) return 0
+    const h = d.getHours() + d.getMinutes() / 60
+    const row = PREFS.find(r => h >= r[0] && h < r[1]) || PREFS[0]
+    for (const id of row[2]) {
+      const i = t.moments.findIndex(m => m.id === id)
+      if (i >= 0) return i
+    }
+    return t.hero
+  }
+
+  /* ---------- The scene behind the page ---------- */
+  const layers = [$('s0'), $('s1')]
+  let front = 0
+  let seq = 0
+  function showScene(file) {
+    const cur = layers[front]
+    if (cur.dataset.file === file) return
+    const next = layers[1 - front]
+    const tok = ++seq
+    next.onload = () => {
+      if (tok !== seq) return
+      next.classList.add('on')
+      cur.classList.remove('on')
+      front = 1 - front
+    }
+    next.dataset.file = file
+    next.src = file
+  }
+
+  /* ---------- State ---------- */
+  let pick = 0
+  let moment = clockMoment(THEMES[0])
+  let chosen = false // the visitor picked a moment, so the clock no longer moves it
+
+  function apply() {
+    const t = THEMES[pick]
+    const m = t.moments[moment]
+    showScene(m.file)
+    root.dataset.tone = m.tone
+    $('now').textContent = t.name + (t.moments.length > 1 ? ' · ' + m.name : '')
+    renderPicked()
+  }
+
+  /* ---------- The shelf ---------- */
+  const track = $('track')
+  track.innerHTML = THEMES.map(
+    (t, i) =>
+      '<button class="tcard" role="option" aria-selected="' + (i === pick) + '" data-i="' + i + '">' +
+      '<div class="pic"><img src="' + esc(t.thumb) + '" alt="" loading="lazy" decoding="async"></div>' +
+      '<span>' + esc(t.name) + '</span></button>',
+  ).join('')
+  track.addEventListener('click', e => {
+    const b = e.target.closest('.tcard')
+    if (!b) return
+    choose(Number(b.dataset.i))
+  })
+  function choose(i) {
+    if (i === pick) return
+    pick = i
+    moment = clockMoment(THEMES[i])
+    chosen = false
+    track.querySelectorAll('.tcard').forEach((b, j) => b.setAttribute('aria-selected', String(j === i)))
+    resetSteps()
+    apply()
+    renderPrompt()
+  }
+  const step = () => Math.max(158, track.clientWidth * 0.8)
+  $('prev').addEventListener('click', () => track.scrollBy({ left: -step(), behavior: reduced ? 'auto' : 'smooth' }))
+  $('next').addEventListener('click', () => track.scrollBy({ left: step(), behavior: reduced ? 'auto' : 'smooth' }))
+
+  /* ---------- The picked theme ---------- */
+  const kb = n => (n / 1024 < 1000 ? Math.round(n / 1024) + ' KB' : (n / 1048576).toFixed(1) + ' MB')
+  function renderPicked() {
+    const t = THEMES[pick]
+    const now = clockMoment(t)
+    $('p-name').textContent = t.name
+    $('p-about').textContent = t.about
+    $('pills').innerHTML = t.moments
+      .map(
+        (m, i) =>
+          '<button class="pill" aria-pressed="' + (i === moment) + '" data-m="' + i + '">' + esc(t.moments.length > 1 ? m.name : 'All day') +
+          (i === now && t.moments.length > 1 ? '<span class="now">now</span>' : '') + '</button>',
+      )
+      .join('')
+    const dl = $('dl')
+    if (t.zip) {
+      dl.hidden = false
+      dl.href = t.zip.file
+      dl.setAttribute('download', t.zip.name)
+      $('dl-label').textContent = 'Download ' + t.zip.name
+      $('dl-note').textContent = kb(t.zip.bytes) + (t.moments.length > 1 ? ' · follows your clock' : ' · the same at every hour')
+    } else {
+      dl.hidden = true
+      $('dl-note').textContent = 'The archive comes with the first release.'
+    }
+  }
+  $('pills').addEventListener('click', e => {
+    const b = e.target.closest('.pill')
+    if (!b) return
+    moment = Number(b.dataset.m)
+    chosen = true
+    apply()
+  })
+
+  /* ---------- Install ---------- */
+  function promptFor(t) {
+    const S = t.slug
+    return `Install the BackdropKit theme "${t.name}" for the Claude desktop app.
+
+1. Find ${S}.zip (I just downloaded it, most likely into my Downloads folder).
+2. Before installing, list what is inside. It should hold only: .claude-plugin/marketplace.json,
+   mod/.claude-plugin/plugin.json, mod/hooks/ (the files listed in README.md), project.json, preview.png,
+   README.md. If there is anything else, stop and tell me.
+3. Read mod/hooks/register.tsx and tell me in two lines what it does.
+4. Unpack it into ~/.claude/backdropkit/${S}, replacing an older copy if there is one.
+   Keep this folder: the theme is read from it.
+5. Run: claude plugin marketplace add "<that folder>"
+   then: claude plugin install ${S}@backdropkit-${S} --scope user
+6. If another theme plugin is enabled, ask me before turning it off.
+7. Tell me to run /reload-plugins or start a new session to see the theme.`
+  }
+  function renderPrompt() {
+    const t = THEMES[pick]
+    $('prompt-text').textContent = promptFor(t)
+    $('st-1').textContent = t.zip ? 'Download ' + t.zip.name : 'Download the archive'
+  }
+  function markStep(n) {
+    const dot = $('dot-' + n)
+    dot.className = 'dot done'
+    dot.innerHTML = '<svg class="i" viewBox="0 0 16 16"><path d="M3.5 8.5l3 3 6-7"/></svg>'
+  }
+  function resetSteps() {
+    for (const n of [1, 2]) {
+      const dot = $('dot-' + n)
+      dot.className = 'dot todo'
+      dot.innerHTML = ''
+    }
+  }
+  $('dl').addEventListener('click', () => markStep(1))
+  let copyReset = 0
+  $('copy').addEventListener('click', async () => {
+    const text = promptFor(THEMES[pick])
+    let ok = false
+    try {
+      await navigator.clipboard.writeText(text)
+      ok = true
+    } catch {
+      // The clipboard can be blocked inside a frame: fall back to a selection copy.
+      const ta = document.createElement('textarea')
+      ta.value = text
+      ta.setAttribute('readonly', '')
+      ta.style.position = 'fixed'
+      ta.style.opacity = '0'
+      document.body.appendChild(ta)
+      ta.select()
+      try {
+        ok = document.execCommand('copy')
+      } catch {
+        ok = false
+      }
+      ta.remove()
+    }
+    const b = $('copy')
+    if (ok) {
+      markStep(2)
+      b.textContent = 'Copied'
+    } else {
+      const r = document.createRange()
+      r.selectNodeContents($('prompt-text'))
+      const sel = window.getSelection()
+      sel.removeAllRanges()
+      sel.addRange(r)
+      b.textContent = 'Press Ctrl+C'
+    }
+    clearTimeout(copyReset)
+    copyReset = setTimeout(() => (b.textContent = 'Copy'), 2200)
+  })
+
+  /* ---------- Menu bar clock ---------- */
+  const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: 'short', day: 'numeric', month: 'short' })
+  const timeFmt = new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' })
+  function tick() {
+    const d = new Date()
+    $('clock').textContent = dayFmt.format(d) + '  ' + timeFmt.format(d)
+    if (!chosen) {
+      const m = clockMoment(THEMES[pick], d)
+      if (m !== moment) {
+        moment = m
+        apply()
+      }
+    }
+  }
+  setInterval(tick, 15000)
+
+  /* ---------- Composer ---------- */
+  const WANT = 'Build my own Claude Code theme'
+  const typed = $('typed')
+  if (reduced) typed.textContent = WANT
+  else {
+    let i = 0
+    const type = () => {
+      typed.textContent = WANT.slice(0, ++i)
+      if (i < WANT.length) setTimeout(type, 70 + Math.random() * 60)
+    }
+    setTimeout(type, 1100)
+  }
+  let asked = false
+  $('compose').addEventListener('click', () => {
+    if (asked) {
+      $('editor-reply').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' })
+      return
+    }
+    asked = true
+    typed.textContent = WANT
+    const chat = $('chat')
+    const user = document.createElement('div')
+    user.className = 'msg user arrive'
+    user.innerHTML = '<div>' + esc(WANT) + '</div>'
+    const bot = document.createElement('div')
+    bot.className = 'msg bot arrive'
+    bot.id = 'editor-reply'
+    bot.innerHTML =
+      who() +
+      '<p>The editor is not open yet: I am building it right now. You will stack layers, paint with pixel brushes, add motion, place the light and tie it all to the time of day, then export the same kind of archive these themes come in.</p>' +
+      '<p>When it is ready, this box opens it. <a href="' + esc(REPO) + '" target="_blank" rel="noopener">Star BackdropKit on GitHub</a> to hear when it lands.</p>'
+    const fine = $('fine')
+    chat.insertBefore(user, fine)
+    chat.insertBefore(bot, fine)
+    bot.style.animationDelay = '0.5s'
+    setTimeout(() => bot.scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'end' }), 60)
+  })
+  function who() {
+    return '<div class="who">' + $('mark-tpl').innerHTML + 'winch-ai</div>'
+  }
+
+  /* ---------- Start ---------- */
+  tick()
+  renderPrompt()
+  apply()
+})()
+</script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+/* Layout: the page is a Claude Code window with a theme playing behind it, the way the theme
+   plays in the desktop app. Top to bottom: a Mac menu bar, the window's title row, a frosted
+   column down the middle holding a chat with winch-ai, and the composer pinned to the bottom.
+   The ink follows the scene: dark ink on pale frost over a light scene, light ink on smoked frost
+   over a dark one. The scene brings all the colour; the interface adds none of its own. */
+:root {
+  --ink: #1b2530;
+  --ink-2: #56626e;
+  --ink-3: #7d8893;
+  --ink-inv: #ffffff;
+  --haze: rgba(244, 248, 252, 0.4);
+  --bubble: rgba(255, 255, 255, 0.86);
+  --glass: rgba(255, 255, 255, 0.34);
+  --glass-line: rgba(255, 255, 255, 0.62);
+  --card: rgba(255, 255, 255, 0.94);
+  --line: rgba(20, 32, 46, 0.1);
+  --bar: rgba(250, 252, 255, 0.5);
+  --title: rgba(246, 249, 252, 0.62);
+  --shade: rgba(22, 34, 52, 0.13);
+  --fade: rgba(236, 242, 248, 0.88);
+  --ground: #1b2430;
+  --text: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Geist Mono", Menlo, monospace;
+  --col: 730px;
+  --bar-h: 26px;
+  --title-h: 38px;
+  color-scheme: light;
+}
+:root[data-tone="dark"] {
+  --ink: #edf1f5;
+  --ink-2: #b0bac6;
+  --ink-3: #8994a1;
+  --ink-inv: #10151c;
+  --haze: rgba(10, 14, 22, 0.44);
+  --bubble: rgba(40, 46, 58, 0.86);
+  --glass: rgba(255, 255, 255, 0.07);
+  --glass-line: rgba(255, 255, 255, 0.12);
+  --card: rgba(26, 30, 39, 0.92);
+  --line: rgba(255, 255, 255, 0.09);
+  --bar: rgba(14, 18, 26, 0.5);
+  --title: rgba(18, 22, 30, 0.6);
+  --shade: rgba(0, 0, 0, 0.32);
+  --fade: rgba(16, 20, 28, 0.86);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box }
+[hidden] { display: none !important }
+html, body { height: 100% }
+body {
+  margin: 0;
+  background: var(--ground);
+  color: var(--ink);
+  font: 15px/1.45 var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+a { color: inherit }
+button { font: inherit; color: inherit }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 6px }
+svg.i { width: 16px; height: 16px; display: block; flex: none; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round }
+
+/* ---- The scene behind everything ---- */
+.scene { position: fixed; inset: 0; z-index: 0; background: var(--ground) }
+.scene img {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block; object-fit: cover;
+  opacity: 0; transition: opacity 0.8s ease;
+}
+.scene img.on { opacity: 1 }
+.band {
+  position: fixed; top: 0; bottom: 0; left: 50%; z-index: 1;
+  width: min(920px, 100%); transform: translateX(-50%);
+  background: var(--haze);
+  -webkit-backdrop-filter: blur(18px) saturate(1.12);
+  backdrop-filter: blur(18px) saturate(1.12);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+}
+
+/* ---- Mac menu bar and the window's title row ---- */
+body::before {
+  content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10;
+  background: var(--bar);
+}
+.top { position: fixed; left: 0; right: 0; top: env(safe-area-inset-top, 0px); z-index: 9 }
+.menubar, .titlebar {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding-left: max(10px, env(safe-area-inset-left, 0px));
+  padding-right: max(12px, env(safe-area-inset-right, 0px));
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  backdrop-filter: blur(24px) saturate(1.4);
+}
+.menubar { height: var(--bar-h); background: var(--bar); font-size: 13px; line-height: 1 }
+.titlebar { height: var(--title-h); background: var(--title); border-bottom: 1px solid var(--line); font-size: 14px }
+.side { display: flex; align-items: center; gap: 2px; min-width: 0 }
+.mb-item {
+  display: inline-flex; align-items: center; gap: 7px; height: 21px; padding: 0 9px;
+  border: 0; border-radius: 5px; background: none; text-decoration: none; cursor: default; white-space: nowrap;
+}
+.mb-item:hover { background: var(--glass) }
+.mb-app { font-weight: 650 }
+.mb-now { color: var(--ink-2) }
+.mb-clock { font-variant-numeric: tabular-nums }
+.mark { width: 14px; height: 14px; display: block; flex: none }
+.title { display: inline-flex; align-items: center; gap: 6px; padding: 5px 8px; border: 0; background: none; border-radius: 6px; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0 }
+.title:hover, .tb-btn:hover { background: var(--glass) }
+.tb-btn { width: 30px; height: 28px; display: grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--ink-2); cursor: pointer; text-decoration: none }
+.tb-btn svg.i { width: 17px; height: 17px }
+
+/* ---- The chat ---- */
+.chat {
+  position: relative; z-index: 2;
+  max-width: calc(var(--col) + 32px); margin: 0 auto;
+  padding-top: calc(var(--bar-h) + var(--title-h) + env(safe-area-inset-top, 0px) + 28px);
+  padding-bottom: 150px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; gap: 22px;
+}
+.msg { min-width: 0 }
+.msg p { margin: 0 0 12px }
+.msg p:last-child { margin-bottom: 0 }
+.user { display: flex; justify-content: flex-end }
+.user > div {
+  max-width: 86%; padding: 12px 16px; border-radius: 11px;
+  background: var(--bubble); border: 1px solid var(--line);
+  box-shadow: 0 1px 2px var(--shade);
+}
+.who { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font-size: 13px; font-weight: 600 }
+.who .mark { width: 15px; height: 15px }
+.bot strong { font-weight: 600 }
+.muted { color: var(--ink-2) }
+.fine { font-size: 12px; color: var(--ink-3); text-align: center; margin: 4px 0 0 }
+
+/* Collapsed tool rows: a line of grey text that opens into what it did. */
+.tool { margin: 2px 0 }
+.tool summary {
+  list-style: none; display: inline-flex; align-items: center; gap: 4px; cursor: pointer; color: var(--ink-2);
+  padding: 2px 0; border-radius: 6px;
+}
+.tool summary::-webkit-details-marker { display: none }
+.tool summary svg.i { width: 14px; height: 14px; transition: transform 0.2s ease }
+.tool[open] summary svg.i { transform: rotate(90deg) }
+.tool summary:hover { color: var(--ink) }
+.tool-body { margin: 8px 0 4px; padding: 10px 14px; border-left: 2px solid var(--line); color: var(--ink-2); font-size: 14px }
+.tool-body table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums }
+.tool-body td { padding: 3px 12px 3px 0; vertical-align: top }
+.tool-body td:last-child { padding-right: 0; text-align: right; white-space: nowrap }
+.scroll { overflow-x: auto }
+
+/* The task card, as Claude Code shows its plan. */
+.tasks {
+  margin-top: 12px; padding: 12px 14px; border-radius: 11px;
+  background: var(--glass); border: 1px solid var(--glass-line);
+  display: grid; gap: 2px; list-style: none;
+}
+.tasks li { display: grid; grid-template-columns: 18px 1fr; gap: 10px; align-items: start; padding: 4px 0 }
+.tasks .dot { width: 16px; height: 16px; margin-top: 2px; border-radius: 50%; display: grid; place-items: center }
+.tasks .todo { border: 1.5px dashed var(--ink-3) }
+.tasks .done { background: var(--ink); color: var(--ink-inv) }
+.tasks .done svg.i { width: 10px; height: 10px; stroke-width: 2.4 }
+.tasks .sub { display: block; font-size: 13px; color: var(--ink-2); margin-top: 1px }
+
+/* Status line with the working dots. */
+.status { display: inline-flex; align-items: center; gap: 10px; color: var(--ink-2) }
+.dots { display: inline-flex; gap: 3px }
+.dots i { width: 4px; height: 4px; border-radius: 50%; background: var(--ink-2); animation: dot 1.4s ease-in-out infinite }
+.dots i:nth-child(2) { animation-delay: 0.2s }
+.dots i:nth-child(3) { animation-delay: 0.4s }
+@keyframes dot { 0%, 80%, 100% { opacity: 0.25 } 40% { opacity: 1 } }
+.status .t { color: var(--ink-3); font-variant-numeric: tabular-nums }
+
+/* ---- Themes, inside a reply ---- */
+.shelf { margin-top: 14px; display: grid; gap: 12px; min-width: 0 }
+.shelf-head { display: flex; align-items: center; justify-content: space-between; gap: 12px }
+.shelf-head span { font-size: 13px; color: var(--ink-2) }
+.arrows { display: flex; gap: 6px }
+.round {
+  width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid var(--glass-line); background: var(--glass); cursor: pointer;
+}
+.round svg.i { width: 15px; height: 15px }
+.track {
+  display: grid; grid-auto-flow: column; grid-auto-columns: 158px; gap: 10px;
+  overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+  padding: 3px 3px 6px; margin: -3px -3px 0; overscroll-behavior-x: contain;
+}
+.track::-webkit-scrollbar { display: none }
+.tcard { scroll-snap-align: start; display: grid; gap: 6px; padding: 0; border: 0; background: none; text-align: left; cursor: pointer }
+.tcard .pic {
+  aspect-ratio: 16 / 10; border-radius: 9px; overflow: hidden; background: var(--shade);
+  box-shadow: 0 1px 3px var(--shade); transition: box-shadow 0.25s ease, transform 0.25s ease;
+}
+.tcard img { width: 100%; height: 100%; object-fit: cover; display: block }
+.tcard:hover .pic { transform: translateY(-2px) }
+.tcard[aria-selected="true"] .pic { box-shadow: 0 0 0 2px var(--ink) }
+.tcard span { font-size: 12.5px; font-weight: 500; padding-left: 2px }
+.picked {
+  padding: 14px 16px; border-radius: 12px; background: var(--card); border: 1px solid var(--line);
+  box-shadow: 0 8px 26px var(--shade); display: grid; gap: 10px; min-width: 0;
+}
+.picked h3 { margin: 0; font: 600 17px/1.3 var(--display); letter-spacing: -0.01em }
+.picked p { margin: 0; color: var(--ink-2); font-size: 14px }
+.pills { display: flex; flex-wrap: wrap; gap: 6px }
+.pill { height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; border: 1px solid var(--line); background: transparent; cursor: pointer }
+.pill[aria-pressed="true"] { background: var(--ink); color: var(--ink-inv); border-color: var(--ink) }
+.pill .now { opacity: 0.65; margin-left: 5px; font-size: 11.5px }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 2px }
+.btn {
+  height: 34px; padding: 0 14px; border-radius: 9px; display: inline-flex; align-items: center; gap: 7px;
+  font-size: 13.5px; font-weight: 500; text-decoration: none; cursor: pointer; border: 1px solid var(--line); background: transparent;
+}
+.btn.primary { background: var(--ink); color: var(--ink-inv); border-color: var(--ink) }
+.note { font-size: 12.5px; color: var(--ink-2) }
+
+/* ---- Install prompt ---- */
+.prompt { margin-top: 12px; border-radius: 11px; background: var(--card); border: 1px solid var(--line); overflow: hidden }
+.prompt-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 7px 8px 7px 14px; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--ink-2);
+}
+.prompt pre { margin: 0; padding: 12px 14px; max-height: 210px; overflow: auto; font: 12.5px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: break-word }
+.prompt .btn { height: 26px; padding: 0 10px; font-size: 12.5px }
+
+/* ---- Composer ---- */
+.composer {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 8;
+  padding-bottom: max(10px, env(safe-area-inset-bottom, 0px));
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  display: grid; justify-items: center; gap: 8px; pointer-events: none;
+  padding-top: 26px;
+}
+.composer::before {
+  content: ""; position: absolute; top: 0; bottom: 0; left: 50%; z-index: -1;
+  width: min(920px, 100%); transform: translateX(-50%);
+  background: linear-gradient(to bottom, transparent, var(--fade) 46%);
+}
+.box {
+  pointer-events: auto; width: min(100%, calc(var(--col) + 36px));
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
+  min-height: 46px; padding: 6px 7px 6px 14px; border-radius: 11px; text-align: left;
+  background: var(--card); border: 1px solid var(--line); cursor: pointer;
+  box-shadow: 0 1px 2px var(--shade), 0 10px 28px var(--shade);
+}
+.box .plus { color: var(--ink-2) }
+.box .plus svg.i { width: 18px; height: 18px }
+.line { font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0 }
+.caret { display: inline-block; width: 1.5px; height: 1.1em; margin-left: 1px; vertical-align: -0.18em; background: var(--ink); animation: blink 1.06s steps(1) infinite }
+@keyframes blink { 50% { opacity: 0 } }
+.go {
+  display: inline-flex; align-items: center; gap: 7px; height: 32px; padding: 0 12px 0 9px;
+  border-radius: 8px; background: var(--ink); color: var(--ink-inv); font-size: 13px; font-weight: 500; white-space: nowrap;
+}
+.go .claude { width: 16px; height: 16px; display: block }
+.under {
+  pointer-events: auto; width: min(100%, calc(var(--col) + 36px));
+  display: flex; justify-content: flex-end; gap: 12px; padding-right: 8px; font-size: 12.5px; color: var(--ink-2);
+}
+
+.arrive { animation: arrive 0.45s ease-out both }
+@keyframes arrive { from { opacity: 0; transform: translateY(8px) } }
+
+@media (max-width: 760px) {
+  .band { -webkit-mask-image: none; mask-image: none }
+  .mb-menu, .mb-now, .tb-extra { display: none }
+  .track { grid-auto-columns: 138px }
+  .user > div { max-width: 92% }
+  .go .label { display: none }
+  .go { padding: 0 9px }
+}
+@media (prefers-reduced-motion: reduce) {
+  .caret, .dots i, .arrive { animation: none }
+  .scene img, .tcard .pic { transition: none }
+}

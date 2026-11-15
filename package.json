@@ -1,0 +1,15 @@
+{
+  "name": "backdropkit",
+  "private": true,
+  "description": "Animated pixel-art themes for the Claude Code desktop app",
+  "license": "MIT",
+  "scripts": {
+    "site": "node site/build.mjs",
+    "serve": "node site/serve.mjs",
+    "pack": "node engine/pack.mjs docs/themes"
+  },
+  "devDependencies": {
+    "playwright-core": "1.62.0",
+    "typescript": "5.9.3"
+  }
+}
