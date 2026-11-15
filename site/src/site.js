@@ -95,8 +95,23 @@
     renderPicked()
     apply()
     renderPrompt()
+    reveal(i)
   }
-  const step = () => Math.max(158, track.clientWidth * 0.8)
+  // The strip shows a whole number of cards; a step is one page of them.
+  const pitch = () => {
+    const c = track.children
+    return c.length > 1 ? c[1].getBoundingClientRect().left - c[0].getBoundingClientRect().left : track.clientWidth
+  }
+  const perPage = () => Math.max(1, Math.round((track.clientWidth - 6 + 10) / pitch()))
+  const step = () => perPage() * pitch()
+  // Bring the picked card into view (a theme can also be picked from the full-screen arrows).
+  function reveal(i) {
+    const p = pitch()
+    const page = perPage()
+    const first = Math.round(track.scrollLeft / p)
+    if (i >= first && i < first + page) return
+    track.scrollTo({ left: Math.floor(i / page) * page * p, behavior: reduced || root.dataset.full ? 'auto' : 'smooth' })
+  }
   $('prev').addEventListener('click', () => track.scrollBy({ left: -step(), behavior: reduced ? 'auto' : 'smooth' }))
   $('next').addEventListener('click', () => track.scrollBy({ left: step(), behavior: reduced ? 'auto' : 'smooth' }))
 
@@ -369,4 +384,6 @@
   renderPicked()
   tick()
   renderPrompt()
+  // The chat is its own scroller: give it the keys (space, arrows, page down) from the start.
+  $('chat').focus({ preventScroll: true })
 })()

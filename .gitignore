@@ -17,3 +17,4 @@ app/tools/shots.mjs
 # The site page as a claude.ai Artifact fragment
 docs/artifact.html
 site/dist/
+video/out/

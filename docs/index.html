@@ -35,6 +35,8 @@
   --col: 730px;
   --bar-h: 26px;
   --title-h: 38px;
+  /* From the window's bottom edge to the top of the composer's box. */
+  --dock: calc(82px + max(0px, env(safe-area-inset-bottom, 0px) - 10px));
   color-scheme: light;
 }
 :root[data-tone="dark"] {
@@ -77,14 +79,17 @@ svg.i { width: 16px; height: 16px; display: block; flex: none; fill: none; strok
   opacity: 0; transition: opacity 0.8s ease;
 }
 .scene img.on { opacity: 1 }
+/* The frost behind the chat. Its soft sides lie wholly outside the text column, so nothing in the
+   chat sits on the seam between frosted and clear. */
 .band {
   position: fixed; top: 0; bottom: 0; left: 50%; z-index: 1;
-  width: min(920px, 100%); transform: translateX(-50%);
+  width: min(calc(var(--col) + 380px), 100%); transform: translateX(-50%);
   background: var(--haze);
   -webkit-backdrop-filter: blur(18px) saturate(1.12);
   backdrop-filter: blur(18px) saturate(1.12);
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 12%, #000 88%, transparent);
+  --soft: max(16px, calc((100% - var(--col) - 40px) / 2));
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent);
+  mask-image: linear-gradient(90deg, transparent, #000 var(--soft), #000 calc(100% - var(--soft)), transparent);
 }
 
 /* ---- Mac menu bar and the window's title row ---- */
@@ -118,15 +123,23 @@ body::before {
 .tb-btn svg.i { width: 17px; height: 17px }
 
 /* ---- The chat ---- */
+/* The chat scrolls on its own between the title row and the composer, as in the app: it fades out
+   just above the composer's box, so nothing shows through round or under it. */
 .chat {
-  position: relative; z-index: 2;
-  max-width: calc(var(--col) + 32px); margin: 0 auto;
-  padding-top: calc(var(--bar-h) + var(--title-h) + env(safe-area-inset-top, 0px) + 28px);
-  padding-bottom: 150px;
-  padding-left: max(16px, env(safe-area-inset-left, 0px));
-  padding-right: max(16px, env(safe-area-inset-right, 0px));
-  display: grid; gap: 22px;
+  position: fixed; z-index: 2; left: 0; right: 0; bottom: 0;
+  top: calc(var(--bar-h) + var(--title-h) + env(safe-area-inset-top, 0px));
+  overflow-x: hidden; overflow-y: auto; overscroll-behavior: contain;
+  padding-top: 28px;
+  padding-bottom: calc(var(--dock) + 40px);
+  padding-left: max(16px, env(safe-area-inset-left, 0px), calc((100% - var(--col)) / 2));
+  padding-right: max(16px, env(safe-area-inset-right, 0px), calc((100% - var(--col)) / 2));
+  scroll-padding: 28px 0 calc(var(--dock) + 40px);
+  display: grid; gap: 22px; align-content: start;
+  scrollbar-width: thin; scrollbar-color: var(--glass-line) transparent;
+  -webkit-mask-image: linear-gradient(to bottom, transparent, #000 22px, #000 calc(100% - var(--dock) - 30px), transparent calc(100% - var(--dock) + 2px));
+  mask-image: linear-gradient(to bottom, transparent, #000 22px, #000 calc(100% - var(--dock) - 30px), transparent calc(100% - var(--dock) + 2px));
 }
+.chat:focus { outline: none }
 .msg { min-width: 0 }
 .msg p { margin: 0 0 12px }
 .msg p:last-child { margin-bottom: 0 }
@@ -190,9 +203,12 @@ body::before {
   border: 1px solid var(--glass-line); background: var(--glass); cursor: pointer;
 }
 .round svg.i { width: 15px; height: 15px }
+/* A whole number of cards in view (--per), so none is ever cut by the edge; the arrows move a page. */
 .track {
-  display: grid; grid-auto-flow: column; grid-auto-columns: 158px; gap: 10px;
-  overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none;
+  --per: 4;
+  display: grid; grid-auto-flow: column; gap: 10px;
+  grid-auto-columns: calc((100% - (var(--per) - 1) * 10px) / var(--per));
+  overflow-x: auto; scroll-snap-type: x mandatory; scrollbar-width: none; scroll-padding-inline: 3px;
   padding: 3px 3px 6px; margin: -3px -3px 0; overscroll-behavior-x: contain;
 }
 .track::-webkit-scrollbar { display: none }
@@ -254,11 +270,6 @@ body::before {
   display: grid; justify-items: center; gap: 8px; pointer-events: none;
   padding-top: 26px;
 }
-.composer::before {
-  content: ""; position: absolute; top: 0; bottom: 0; left: 50%; z-index: -1;
-  width: min(920px, 100%); transform: translateX(-50%);
-  background: linear-gradient(to bottom, transparent, var(--fade) 46%);
-}
 .box {
   pointer-events: auto; width: min(100%, calc(var(--col) + 36px));
   display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px;
@@ -308,7 +319,7 @@ body::before {
 @media (max-width: 760px) {
   .band { -webkit-mask-image: none; mask-image: none }
   .mb-menu, .mb-now, .tb-extra { display: none }
-  .track { grid-auto-columns: 138px }
+  .track { --per: 2 }
   .user > div { max-width: 92% }
   .go .label { display: none }
   .go { padding: 0 9px }
@@ -351,7 +362,7 @@ body::before {
   </div>
 </header>
 
-<main class="chat" id="chat">
+<main class="chat" id="chat" tabindex="-1">
   <div class="msg user" id="top"><div>What is this?</div></div>
 
   <div class="msg bot">
@@ -547,8 +558,23 @@ body::before {
     renderPicked()
     apply()
     renderPrompt()
+    reveal(i)
   }
-  const step = () => Math.max(158, track.clientWidth * 0.8)
+  // The strip shows a whole number of cards; a step is one page of them.
+  const pitch = () => {
+    const c = track.children
+    return c.length > 1 ? c[1].getBoundingClientRect().left - c[0].getBoundingClientRect().left : track.clientWidth
+  }
+  const perPage = () => Math.max(1, Math.round((track.clientWidth - 6 + 10) / pitch()))
+  const step = () => perPage() * pitch()
+  // Bring the picked card into view (a theme can also be picked from the full-screen arrows).
+  function reveal(i) {
+    const p = pitch()
+    const page = perPage()
+    const first = Math.round(track.scrollLeft / p)
+    if (i >= first && i < first + page) return
+    track.scrollTo({ left: Math.floor(i / page) * page * p, behavior: reduced || root.dataset.full ? 'auto' : 'smooth' })
+  }
   $('prev').addEventListener('click', () => track.scrollBy({ left: -step(), behavior: reduced ? 'auto' : 'smooth' }))
   $('next').addEventListener('click', () => track.scrollBy({ left: step(), behavior: reduced ? 'auto' : 'smooth' }))
 
@@ -821,6 +847,8 @@ body::before {
   renderPicked()
   tick()
   renderPrompt()
+  // The chat is its own scroller: give it the keys (space, arrows, page down) from the start.
+  $('chat').focus({ preventScroll: true })
 })()
 </script>
 </body>

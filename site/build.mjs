@@ -45,6 +45,7 @@ fs.rmSync(ED, { recursive: true, force: true })
 const edFiles =
   copyDir(path.join(KIT, 'editor', 'app'), ED) +
   copyDir(path.join(KIT, 'editor', 'lib'), path.join(ED, 'lib')) +
+  copyDir(path.join(KIT, 'editor', 'fx'), path.join(ED, 'fx')) +
   copyDir(path.join(KIT, 'engine', 'theme-mod', 'hooks'), path.join(ED, 'mod', 'hooks'))
 console.log('docs/editor: ' + edFiles + ' files')
 if (process.env.EDITOR_ONLY) process.exit(0)
@@ -224,7 +225,7 @@ const body = `<div class="scene" aria-hidden="true"><img id="s0" class="on" alt=
   </div>
 </header>
 
-<main class="chat" id="chat">
+<main class="chat" id="chat" tabindex="-1">
   <div class="msg user" id="top"><div>What is this?</div></div>
 
   <div class="msg bot">
