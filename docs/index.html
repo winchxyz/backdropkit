@@ -281,6 +281,27 @@ body::before {
   display: flex; justify-content: flex-end; gap: 12px; padding-right: 8px; font-size: 12.5px; color: var(--ink-2);
 }
 
+/* ---- Full screen: the scene alone, with a small bar that hides when the pointer rests ---- */
+:root[data-full] { overflow: hidden }
+:root[data-full] .top, :root[data-full] .chat, :root[data-full] .composer, :root[data-full] .band { visibility: hidden }
+:root[data-full] body::before { display: none }
+.full-bar {
+  position: fixed; left: 50%; bottom: max(18px, env(safe-area-inset-bottom, 0px)); z-index: 12;
+  transform: translateX(-50%); width: max-content; max-width: calc(100% - 32px);
+  display: flex; align-items: center; gap: 6px; padding: 6px; border-radius: 13px;
+  background: var(--card); border: 1px solid var(--line);
+  box-shadow: 0 1px 2px var(--shade), 0 10px 28px var(--shade);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  backdrop-filter: blur(18px) saturate(1.2);
+  transition: opacity 0.4s ease;
+}
+.full-now { flex: 1 1 auto; min-width: 0; padding: 0 6px; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-variant-numeric: tabular-nums }
+.full-bar .round { flex: none }
+.full-bar .btn { flex: none; height: 32px; padding: 0 12px; font-size: 13px; white-space: nowrap }
+.full-bar .btn[aria-pressed="true"] { background: var(--ink); color: var(--ink-inv); border-color: var(--ink) }
+:root[data-full="idle"] .full-bar { opacity: 0; pointer-events: none }
+:root[data-full="idle"], :root[data-full="idle"] * { cursor: none }
+
 .arrive { animation: arrive 0.45s ease-out both }
 @keyframes arrive { from { opacity: 0; transform: translateY(8px) } }
 
@@ -291,10 +312,12 @@ body::before {
   .user > div { max-width: 92% }
   .go .label { display: none }
   .go { padding: 0 9px }
+  .full-bar { left: 16px; right: 16px; transform: none; width: auto; max-width: none; flex-wrap: wrap; justify-content: center }
+  .full-now { flex-basis: 100%; order: -1; text-align: center; padding: 4px 6px 2px }
 }
 @media (prefers-reduced-motion: reduce) {
   .caret, .dots i, .arrive { animation: none }
-  .scene img, .tcard .pic { transition: none }
+  .scene img, .tcard .pic, .full-bar { transition: none }
 }
 </style>
 </head>
@@ -322,6 +345,7 @@ body::before {
       <h1 class="title" style="margin:0;font-size:inherit;font-weight:500">Animated themes for Claude Code <svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4"/></svg></h1>
     </div>
     <div class="side">
+      <button class="tb-btn" id="full-tb" title="See the scene full screen (F)" aria-label="See the scene full screen"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg></button>
       <a class="tb-btn" href="https://github.com/winchxyz/backdropkit" target="_blank" rel="noopener" title="Star BackdropKit on GitHub" aria-label="Star BackdropKit on GitHub"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.2l1.75 3.6 3.95.55-2.87 2.77.7 3.93L8 11.2l-3.53 1.85.7-3.93L2.3 6.35l3.95-.55z"/></svg></a>
     </div>
   </div>
@@ -343,7 +367,7 @@ body::before {
 
   <div class="msg bot">
     <div class="who"><svg class="mark" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1z"/></svg>winch-ai</div>
-    <p>Here they are. Pick one and this page switches to it, the way it would look in the app at this hour. Drag along the day under it, or play the day, to see every time of day.</p>
+    <p>Here they are. Pick one and this page switches to it, the way it would look in the app at this hour. Drag along the day under it or play the day to see every hour, and open it full screen to see the picture alone.</p>
     <div class="shelf">
       <div class="shelf-head"><span>14 themes</span>
         <div class="arrows"><button class="round" id="prev" aria-label="Earlier themes"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5"/></svg></button><button class="round" id="next" aria-label="More themes"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></button></div>
@@ -367,6 +391,7 @@ body::before {
         </div>
         <div class="actions">
           <a class="btn primary" id="dl" href="#"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2.5v8M4.5 7.5L8 11l3.5-3.5M3 13.5h10"/></svg><span id="dl-label">Download</span></a>
+          <button class="btn" id="full" title="Full screen (F)"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/></svg>Full screen</button>
           <a class="btn" href="#install">How to install</a>
           <span class="note" id="dl-note"></span>
         </div>
@@ -416,13 +441,22 @@ body::before {
   <div class="under"><span>winch-ai</span><span>BackdropKit</span></div>
 </div>
 
-<script>window.BK = {"THEMES":[{"slug":"sunfield","name":"Sunfield","line":"Sunflowers under a sky that follows the sun.","about":"An animated pixel-art sky over a sunflower field. Stars and a moon at night, the sun rising behind the long cloud bank and setting behind the small cloud. The flowers lean in the wind, torn petals tumble away, and a flock crosses about once a minute.","hero":1,"thumb":"thumbs/sunfield.jpg","zip":{"file":"themes/sunfield.zip","name":"sunfield.zip","bytes":158913},"moments":[{"id":"sunrise","name":"Sunrise","file":"scenes/sunfield/sunfield-sunrise.svg","tone":"dark","bytes":129300,"start":5},{"id":"day","name":"Day","file":"scenes/sunfield/sunfield-day.svg","tone":"light","bytes":129285,"start":8},{"id":"sunset","name":"Sunset","file":"scenes/sunfield/sunfield-sunset.svg","tone":"dark","bytes":129295,"start":19},{"id":"night","name":"Night","file":"scenes/sunfield/sunfield-night.svg","tone":"dark","bytes":129296,"start":21.5}]},{"slug":"harbor","name":"Harbor","line":"A fishing harbour seen from the pier.","about":"Boats at their moorings, light glinting on the water, gulls overhead and a lighthouse on the point.","hero":0,"thumb":"thumbs/harbor.jpg","zip":{"file":"themes/harbor.zip","name":"harbor.zip","bytes":158313},"moments":[{"id":"day","name":"Day","file":"scenes/harbor/harbor-day.svg","tone":"light","bytes":126852,"start":6},{"id":"sunset","name":"Sunset","file":"scenes/harbor/harbor-sunset.svg","tone":"dark","bytes":120733,"start":17},{"id":"night","name":"Night","file":"scenes/harbor/harbor-night.svg","tone":"dark","bytes":113688,"start":21}]},{"slug":"snowfall-ridge","name":"Snowfall Ridge","line":"Mountains, spruce and a cabin under snow.","about":"A ridge above a spruce forest and a small cabin. Snow falls in three layers and smoke rises from the chimney.","hero":1,"thumb":"thumbs/snowfall-ridge.jpg","zip":{"file":"themes/snowfall-ridge.zip","name":"snowfall-ridge.zip","bytes":152587},"moments":[{"id":"morning","name":"Morning","file":"scenes/snowfall-ridge/snowfall-ridge-morning.svg","tone":"light","bytes":124748,"start":6},{"id":"day","name":"Day","file":"scenes/snowfall-ridge/snowfall-ridge-day.svg","tone":"light","bytes":118859,"start":10},{"id":"night","name":"Night","file":"scenes/snowfall-ridge/snowfall-ridge-night.svg","tone":"dark","bytes":115915,"start":20}]},{"slug":"rainy-studio","name":"Rainy Studio","line":"A desk by a rainy window.","about":"Drops run down the glass over a soft city. A desk lamp, a few books and steam rising from a mug.","hero":0,"thumb":"thumbs/rainy-studio.jpg","zip":{"file":"themes/rainy-studio.zip","name":"rainy-studio.zip","bytes":154706},"moments":[{"id":"day","name":"Day","file":"scenes/rainy-studio/rainy-studio-day.svg","tone":"light","bytes":115949,"start":6},{"id":"evening","name":"Evening","file":"scenes/rainy-studio/rainy-studio-evening.svg","tone":"dark","bytes":124083,"start":17},{"id":"night","name":"Night","file":"scenes/rainy-studio/rainy-studio-night.svg","tone":"dark","bytes":124686,"start":21}]},{"slug":"low-orbit","name":"Low Orbit","line":"The edge of the Earth, seen from orbit.","about":"A satellite drifts past the curve of the Earth. The line between day and night moves with the clock, and cities glow on the night side.","hero":1,"thumb":"thumbs/low-orbit.jpg","zip":{"file":"themes/low-orbit.zip","name":"low-orbit.zip","bytes":204496},"moments":[{"id":"a","name":"Before dawn","file":"scenes/low-orbit/low-orbit-a.svg","tone":"dark","bytes":103988,"start":0},{"id":"b","name":"Morning","file":"scenes/low-orbit/low-orbit-b.svg","tone":"dark","bytes":112246,"start":6}]},{"slug":"tide-line","name":"Tide Line","line":"A low view from the beach.","about":"Waves roll in and leave foam on shining wet sand.","hero":0,"thumb":"thumbs/tide-line.jpg","zip":{"file":"themes/tide-line.zip","name":"tide-line.zip","bytes":146494},"moments":[{"id":"sunrise","name":"Sunrise","file":"scenes/tide-line/tide-line-sunrise.svg","tone":"dark","bytes":125041,"start":5},{"id":"sunset","name":"Sunset","file":"scenes/tide-line/tide-line-sunset.svg","tone":"dark","bytes":127386,"start":17},{"id":"night","name":"Night","file":"scenes/tide-line/tide-line-night.svg","tone":"dark","bytes":120874,"start":21}]},{"slug":"cloud-sea","name":"Cloud Sea","line":"A cliff top above a sea of clouds.","about":"Rock spires rise through the clouds below a grassy cliff edge and a lone pine.","hero":0,"thumb":"thumbs/cloud-sea.jpg","zip":{"file":"themes/cloud-sea.zip","name":"cloud-sea.zip","bytes":154765},"moments":[{"id":"day","name":"Day","file":"scenes/cloud-sea/cloud-sea-day.svg","tone":"light","bytes":125399,"start":6},{"id":"sunset","name":"Sunset","file":"scenes/cloud-sea/cloud-sea-sunset.svg","tone":"dark","bytes":127849,"start":17},{"id":"night","name":"Night","file":"scenes/cloud-sea/cloud-sea-night.svg","tone":"dark","bytes":124176,"start":21}]},{"slug":"mirror-lake","name":"Mirror Lake","line":"A still mountain lake that mirrors the sky.","about":"A wide valley and a lake so calm it holds the whole scene again; the clouds drift in the water as they drift above.","hero":0,"thumb":"thumbs/mirror-lake.jpg","zip":{"file":"themes/mirror-lake.zip","name":"mirror-lake.zip","bytes":230987},"moments":[{"id":"day","name":"Day","file":"scenes/mirror-lake/mirror-lake-day.svg","tone":"light","bytes":121040,"start":6},{"id":"sunset","name":"Sunset","file":"scenes/mirror-lake/mirror-lake-sunset.svg","tone":"dark","bytes":122813,"start":17},{"id":"night","name":"Night","file":"scenes/mirror-lake/mirror-lake-night.svg","tone":"dark","bytes":124251,"start":21}]},{"slug":"lavender-slope","name":"Lavender Slope","line":"Lavender rows rolling down to a valley.","about":"A lavender field running down a slope into a valley under jagged snow peaks.","hero":0,"thumb":"thumbs/lavender-slope.jpg","zip":{"file":"themes/lavender-slope.zip","name":"lavender-slope.zip","bytes":167271},"moments":[{"id":"day","name":"Day","file":"scenes/lavender-slope/lavender-slope-day.svg","tone":"light","bytes":124225,"start":6},{"id":"sunset","name":"Sunset","file":"scenes/lavender-slope/lavender-slope-sunset.svg","tone":"light","bytes":125887,"start":17},{"id":"night","name":"Night","file":"scenes/lavender-slope/lavender-slope-night.svg","tone":"dark","bytes":126069,"start":21}]},{"slug":"hill-village","name":"Hill Village","line":"A village on a forested hillside.","about":"Houses spill down a wooded hill into a valley, and the sun comes up at its far end.","hero":1,"thumb":"thumbs/hill-village.jpg","zip":{"file":"themes/hill-village.zip","name":"hill-village.zip","bytes":190119},"moments":[{"id":"sunrise","name":"Sunrise","file":"scenes/hill-village/hill-village-sunrise.svg","tone":"light","bytes":125375,"start":5},{"id":"day","name":"Day","file":"scenes/hill-village/hill-village-day.svg","tone":"light","bytes":114926,"start":8},{"id":"night","name":"Night","file":"scenes/hill-village/hill-village-night.svg","tone":"dark","bytes":114266,"start":20}]},{"slug":"sunbeam-wood","name":"Sunbeam Wood","line":"Shafts of light in an old forest.","about":"Huge mossy trunks frame a glade. Light slants through the canopy onto grass, a stream, a fallen log and ferns.","hero":1,"thumb":"thumbs/sunbeam-wood.jpg","zip":{"file":"themes/sunbeam-wood.zip","name":"sunbeam-wood.zip","bytes":419325},"moments":[{"id":"morning","name":"Morning","file":"scenes/sunbeam-wood/sunbeam-wood-morning.svg","tone":"light","bytes":126700,"start":6},{"id":"day","name":"Day","file":"scenes/sunbeam-wood/sunbeam-wood-day.svg","tone":"light","bytes":123699,"start":10},{"id":"night","name":"Night","file":"scenes/sunbeam-wood/sunbeam-wood-night.svg","tone":"dark","bytes":121762,"start":20}]},{"slug":"side-street","name":"Side Street","line":"A steep lane in a quiet seaside town.","about":"A residential lane running down to a level crossing, with the roofs of the lower town and the bay beyond.","hero":0,"thumb":"thumbs/side-street.jpg","zip":{"file":"themes/side-street.zip","name":"side-street.zip","bytes":149944},"moments":[{"id":"day","name":"Day","file":"scenes/side-street/side-street-day.svg","tone":"light","bytes":120686,"start":6},{"id":"evening","name":"Evening","file":"scenes/side-street/side-street-evening.svg","tone":"dark","bytes":120124,"start":17},{"id":"night","name":"Night","file":"scenes/side-street/side-street-night.svg","tone":"dark","bytes":106787,"start":21}]},{"slug":"deep-reef","name":"Deep Reef","line":"Under the water, light falling from above.","about":"Rays from the surface, swaying weed, fish and rising bubbles. The same at every hour.","hero":0,"thumb":"thumbs/deep-reef.jpg","zip":{"file":"themes/deep-reef.zip","name":"deep-reef.zip","bytes":155189},"moments":[{"id":"","name":"All day","file":"scenes/deep-reef/deep-reef.svg","tone":"dark","bytes":123851,"start":0}]},{"slug":"moon-keep","name":"Moon Keep","line":"A castle of spires under a full moon.","about":"Gothic spires on a crag in a cold blue night. The same at every hour.","hero":0,"thumb":"thumbs/moon-keep.jpg","zip":{"file":"themes/moon-keep.zip","name":"moon-keep.zip","bytes":105626},"moments":[{"id":"","name":"All day","file":"scenes/moon-keep/moon-keep.svg","tone":"dark","bytes":129929,"start":0}]}],"REPO":"https://github.com/winchxyz/backdropkit"}</script>
+<div class="full-bar" id="full-bar" role="toolbar" aria-label="Full screen" hidden>
+  <button class="round" id="full-prev" title="Previous theme (←)" aria-label="Previous theme"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3.5L5.5 8l4.5 4.5"/></svg></button>
+  <span class="full-now" id="full-now" aria-live="polite"></span>
+  <button class="round" id="full-next" title="Next theme (→)" aria-label="Next theme"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3.5l4.5 4.5L6 12.5"/></svg></button>
+  <button class="btn" id="full-play" aria-pressed="false">Play the day</button>
+  <button class="btn" id="full-exit" title="Exit full screen (Esc)"><svg class="i" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 2.5V6H2.5M13.5 6H10V2.5M10 13.5V10h3.5M2.5 10H6v3.5"/></svg>Exit</button>
+</div>
+
+<script>window.BK = {"THEMES":[{"slug":"sunfield","name":"Sunfield","line":"Sunflowers under a sky that follows the sun.","about":"An animated pixel-art sky over a sunflower field. Stars and a moon at night, the sun rising behind the long cloud bank and setting behind the small cloud. The flowers lean in the wind, torn petals tumble away, and a flock crosses about once a minute.","hero":1,"thumb":"thumbs/sunfield.jpg","zip":{"file":"themes/sunfield.zip","name":"sunfield.zip","bytes":158913},"moments":[{"id":"sunrise","name":"Sunrise","file":"scenes/sunfield/sunfield-sunrise.svg","tone":"dark","bytes":129300,"start":5},{"id":"day","name":"Day","file":"scenes/sunfield/sunfield-day.svg","tone":"light","bytes":129285,"start":8},{"id":"sunset","name":"Sunset","file":"scenes/sunfield/sunfield-sunset.svg","tone":"dark","bytes":129295,"start":19},{"id":"night","name":"Night","file":"scenes/sunfield/sunfield-night.svg","tone":"dark","bytes":129296,"start":21.5}]},{"slug":"harbor","name":"Harbor","line":"A fishing harbour seen from the pier.","about":"Boats at their moorings, light glinting on the water, gulls overhead and a lighthouse on the point.","hero":0,"thumb":"thumbs/harbor.jpg","zip":{"file":"themes/harbor.zip","name":"harbor.zip","bytes":158313},"moments":[{"id":"day","name":"Day","file":"scenes/harbor/harbor-day.svg","tone":"light","bytes":126852,"start":6},{"id":"sunset","name":"Sunset","file":"scenes/harbor/harbor-sunset.svg","tone":"dark","bytes":120733,"start":17},{"id":"night","name":"Night","file":"scenes/harbor/harbor-night.svg","tone":"dark","bytes":113688,"start":21}]},{"slug":"snowfall-ridge","name":"Snowfall Ridge","line":"Mountains, spruce and a cabin under snow.","about":"A ridge above a spruce forest and a small cabin. Snow falls in three layers and smoke rises from the chimney.","hero":1,"thumb":"thumbs/snowfall-ridge.jpg","zip":{"file":"themes/snowfall-ridge.zip","name":"snowfall-ridge.zip","bytes":152587},"moments":[{"id":"morning","name":"Morning","file":"scenes/snowfall-ridge/snowfall-ridge-morning.svg","tone":"light","bytes":124748,"start":6},{"id":"day","name":"Day","file":"scenes/snowfall-ridge/snowfall-ridge-day.svg","tone":"light","bytes":118859,"start":10},{"id":"night","name":"Night","file":"scenes/snowfall-ridge/snowfall-ridge-night.svg","tone":"dark","bytes":115915,"start":20}]},{"slug":"rainy-studio","name":"Rainy Studio","line":"A desk by a rainy window.","about":"Drops run down the glass over a soft city. A desk lamp, a few books and steam rising from a mug.","hero":0,"thumb":"thumbs/rainy-studio.jpg","zip":{"file":"themes/rainy-studio.zip","name":"rainy-studio.zip","bytes":154706},"moments":[{"id":"day","name":"Day","file":"scenes/rainy-studio/rainy-studio-day.svg","tone":"light","bytes":115949,"start":6},{"id":"evening","name":"Evening","file":"scenes/rainy-studio/rainy-studio-evening.svg","tone":"dark","bytes":124083,"start":17},{"id":"night","name":"Night","file":"scenes/rainy-studio/rainy-studio-night.svg","tone":"dark","bytes":124686,"start":21}]},{"slug":"low-orbit","name":"Low Orbit","line":"The edge of the Earth, seen from orbit.","about":"A satellite drifts past the curve of the Earth. The line between day and night moves with the clock, and cities glow on the night side.","hero":1,"thumb":"thumbs/low-orbit.jpg","zip":{"file":"themes/low-orbit.zip","name":"low-orbit.zip","bytes":204496},"moments":[{"id":"a","name":"Before dawn","file":"scenes/low-orbit/low-orbit-a.svg","tone":"dark","bytes":103988,"start":0},{"id":"b","name":"Morning","file":"scenes/low-orbit/low-orbit-b.svg","tone":"dark","bytes":112246,"start":6}]},{"slug":"tide-line","name":"Tide Line","line":"A low view from the beach.","about":"Waves roll in and leave foam on shining wet sand.","hero":0,"thumb":"thumbs/tide-line.jpg","zip":{"file":"themes/tide-line.zip","name":"tide-line.zip","bytes":146494},"moments":[{"id":"sunrise","name":"Sunrise","file":"scenes/tide-line/tide-line-sunrise.svg","tone":"dark","bytes":125041,"start":5},{"id":"sunset","name":"Sunset","file":"scenes/tide-line/tide-line-sunset.svg","tone":"dark","bytes":127386,"start":17},{"id":"night","name":"Night","file":"scenes/tide-line/tide-line-night.svg","tone":"dark","bytes":120874,"start":21}]},{"slug":"cloud-sea","name":"Cloud Sea","line":"A cliff top above a sea of clouds.","about":"Rock spires rise through the clouds below a grassy cliff edge and a lone pine.","hero":0,"thumb":"thumbs/cloud-sea.jpg","zip":{"file":"themes/cloud-sea.zip","name":"cloud-sea.zip","bytes":154765},"moments":[{"id":"day","name":"Day","file":"scenes/cloud-sea/cloud-sea-day.svg","tone":"light","bytes":125399,"start":6},{"id":"sunset","name":"Sunset","file":"scenes/cloud-sea/cloud-sea-sunset.svg","tone":"dark","bytes":127849,"start":17},{"id":"night","name":"Night","file":"scenes/cloud-sea/cloud-sea-night.svg","tone":"dark","bytes":124176,"start":21}]},{"slug":"mirror-lake","name":"Mirror Lake","line":"A still mountain lake that mirrors the sky.","about":"A wide valley and a lake so calm it holds the whole scene again; the clouds drift in the water as they drift above.","hero":0,"thumb":"thumbs/mirror-lake.jpg","zip":{"file":"themes/mirror-lake.zip","name":"mirror-lake.zip","bytes":230987},"moments":[{"id":"day","name":"Day","file":"scenes/mirror-lake/mirror-lake-day.svg","tone":"light","bytes":121040,"start":6},{"id":"sunset","name":"Sunset","file":"scenes/mirror-lake/mirror-lake-sunset.svg","tone":"dark","bytes":122813,"start":17},{"id":"night","name":"Night","file":"scenes/mirror-lake/mirror-lake-night.svg","tone":"dark","bytes":124251,"start":21}]},{"slug":"lavender-slope","name":"Lavender Slope","line":"Lavender rows rolling down to a valley.","about":"A lavender field running down a slope into a valley under jagged snow peaks.","hero":0,"thumb":"thumbs/lavender-slope.jpg","zip":{"file":"themes/lavender-slope.zip","name":"lavender-slope.zip","bytes":167271},"moments":[{"id":"day","name":"Day","file":"scenes/lavender-slope/lavender-slope-day.svg","tone":"light","bytes":124225,"start":6},{"id":"sunset","name":"Sunset","file":"scenes/lavender-slope/lavender-slope-sunset.svg","tone":"light","bytes":125887,"start":17},{"id":"night","name":"Night","file":"scenes/lavender-slope/lavender-slope-night.svg","tone":"dark","bytes":126069,"start":21}]},{"slug":"hill-village","name":"Hill Village","line":"A village on a forested hillside.","about":"Houses spill down a wooded hill into a valley, and the sun comes up at its far end.","hero":1,"thumb":"thumbs/hill-village.jpg","zip":{"file":"themes/hill-village.zip","name":"hill-village.zip","bytes":190119},"moments":[{"id":"sunrise","name":"Sunrise","file":"scenes/hill-village/hill-village-sunrise.svg","tone":"light","bytes":125375,"start":5},{"id":"day","name":"Day","file":"scenes/hill-village/hill-village-day.svg","tone":"light","bytes":114926,"start":8},{"id":"night","name":"Night","file":"scenes/hill-village/hill-village-night.svg","tone":"dark","bytes":114266,"start":20}]},{"slug":"sunbeam-wood","name":"Sunbeam Wood","line":"Shafts of light in an old forest.","about":"Huge mossy trunks frame a glade. Light slants through the canopy onto grass, a stream, a fallen log and ferns.","hero":1,"thumb":"thumbs/sunbeam-wood.jpg","zip":{"file":"themes/sunbeam-wood.zip","name":"sunbeam-wood.zip","bytes":419325},"moments":[{"id":"morning","name":"Morning","file":"scenes/sunbeam-wood/sunbeam-wood-morning.svg","tone":"light","bytes":126700,"start":6},{"id":"day","name":"Day","file":"scenes/sunbeam-wood/sunbeam-wood-day.svg","tone":"light","bytes":123699,"start":10},{"id":"night","name":"Night","file":"scenes/sunbeam-wood/sunbeam-wood-night.svg","tone":"dark","bytes":121762,"start":20}]},{"slug":"side-street","name":"Side Street","line":"A steep lane in a quiet seaside town.","about":"A residential lane running down to a level crossing, with the roofs of the lower town and the bay beyond.","hero":0,"thumb":"thumbs/side-street.jpg","zip":{"file":"themes/side-street.zip","name":"side-street.zip","bytes":149944},"moments":[{"id":"day","name":"Day","file":"scenes/side-street/side-street-day.svg","tone":"light","bytes":120686,"start":6},{"id":"evening","name":"Evening","file":"scenes/side-street/side-street-evening.svg","tone":"dark","bytes":120124,"start":17},{"id":"night","name":"Night","file":"scenes/side-street/side-street-night.svg","tone":"dark","bytes":106787,"start":21}]},{"slug":"deep-reef","name":"Deep Reef","line":"Under the water, light falling from above.","about":"Rays from the surface, swaying weed, fish and rising bubbles. The same at every hour.","hero":0,"thumb":"thumbs/deep-reef.jpg","zip":{"file":"themes/deep-reef.zip","name":"deep-reef.zip","bytes":155189},"moments":[{"id":"","name":"All day","file":"scenes/deep-reef/deep-reef.svg","tone":"dark","bytes":123851,"start":0}]},{"slug":"moon-keep","name":"Moon Keep","line":"A castle of spires under a full moon.","about":"Gothic spires on a crag in a cold blue night. The same at every hour.","hero":0,"thumb":"thumbs/moon-keep.jpg","zip":{"file":"themes/moon-keep.zip","name":"moon-keep.zip","bytes":105626},"moments":[{"id":"","name":"All day","file":"scenes/moon-keep/moon-keep.svg","tone":"dark","bytes":129929,"start":0}]}],"REPO":"https://github.com/winchxyz/backdropkit","EDITOR":null}</script>
 <script>// BackdropKit landing: a Claude Code chat with winch-ai, over the theme it is showing.
-// window.BK holds the data the build wrote: { THEMES, REPO }. Each theme is
+// window.BK holds the data the build wrote: { THEMES, REPO, EDITOR } (EDITOR is the editor's
+// address, or null while there is none). Each theme is
 // { slug, name, line, about, hero, thumb, zip: { file, name, bytes } | null,
 //   moments: [{ id, name, file, tone, bytes }] }.
 ;(() => {
-  const { THEMES, REPO } = window.BK
+  const { THEMES, REPO, EDITOR } = window.BK
   const $ = id => document.getElementById(id)
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -488,6 +522,7 @@ body::before {
     showScene(m.file)
     root.dataset.tone = m.tone
     $('now').textContent = t.name + (t.moments.length > 1 ? ' · ' + m.name : '') + (preview === null ? '' : ' · ' + hhmm(min))
+    $('full-now').textContent = t.name + (t.moments.length > 1 ? ' · ' + m.name : '') + ' · ' + hhmm(min)
     renderDay(min)
   }
 
@@ -555,25 +590,31 @@ body::before {
   // Play the day: an hour a second, from where the line is, once round the clock.
   let playing = 0
   let played = 0
+  function playLabel(on) {
+    for (const id of ['play', 'full-play']) {
+      $(id).textContent = on ? 'Pause' : 'Play the day'
+      $(id).setAttribute('aria-pressed', String(on))
+    }
+  }
   function stop() {
     clearInterval(playing)
     playing = 0
-    $('play').textContent = 'Play the day'
-    $('play').setAttribute('aria-pressed', 'false')
+    playLabel(false)
   }
-  $('play').addEventListener('click', () => {
+  function togglePlay() {
     if (playing) return stop()
     if (preview === null) preview = minuteNow()
     played = 0
-    $('play').textContent = 'Pause'
-    $('play').setAttribute('aria-pressed', 'true')
+    playLabel(true)
     playing = setInterval(() => {
       preview = (preview + 5) % 1440
       played += 5
       apply()
       if (played >= 1440) stop()
     }, 1000 / 12)
-  })
+  }
+  $('play').addEventListener('click', togglePlay)
+  $('full-play').addEventListener('click', togglePlay)
   $('scrub').addEventListener('input', e => {
     stop()
     preview = Number(e.target.value)
@@ -583,6 +624,66 @@ body::before {
     stop()
     preview = null
     apply()
+  })
+
+  /* ---------- Full screen: the scene alone ---------- */
+  // The chat, bars and composer step aside (the page keeps its scroll), the browser goes full
+  // screen where it may (a preview frame can refuse; the page still shows the scene alone), and a
+  // small bar stays for the theme, the hour and the way out. It hides when the pointer rests.
+  let idle = 0
+  function wake() {
+    if (!root.dataset.full) return
+    root.dataset.full = 'on'
+    clearTimeout(idle)
+    idle = setTimeout(() => {
+      if (root.dataset.full && !$('full-bar').matches(':hover, :focus-within')) root.dataset.full = 'idle'
+    }, 2600)
+  }
+  function enterFull() {
+    if (root.dataset.full) return
+    root.dataset.full = 'on'
+    $('full-bar').hidden = false
+    wake()
+    const el = document.documentElement
+    if (el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {})
+  }
+  function leaveFull() {
+    if (!root.dataset.full) return
+    delete root.dataset.full
+    $('full-bar').hidden = true
+    clearTimeout(idle)
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+  }
+  const stepTheme = d => {
+    choose((pick + d + THEMES.length) % THEMES.length)
+    wake()
+  }
+  $('full').addEventListener('click', enterFull)
+  $('full-tb').addEventListener('click', enterFull)
+  $('full-exit').addEventListener('click', leaveFull)
+  $('full-prev').addEventListener('click', () => stepTheme(-1))
+  $('full-next').addEventListener('click', () => stepTheme(1))
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) leaveFull()
+  })
+  for (const ev of ['pointermove', 'pointerdown', 'wheel']) document.addEventListener(ev, wake, { passive: true })
+  document.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return
+    const k = e.key
+    if (root.dataset.full) {
+      if (k === 'Escape' || k === 'f' || k === 'F') {
+        e.preventDefault()
+        leaveFull()
+      } else if (k === 'ArrowLeft' || k === 'ArrowRight') {
+        e.preventDefault()
+        stepTheme(k === 'ArrowLeft' ? -1 : 1)
+      } else wake()
+      return
+    }
+    if ((k === 'f' || k === 'F') && !e.target.closest('textarea, [contenteditable], input:not([type="range"])')) {
+      e.preventDefault()
+      enterFull()
+    }
   })
 
   /* ---------- Install ---------- */
@@ -683,6 +784,12 @@ body::before {
   }
   let asked = false
   $('compose').addEventListener('click', () => {
+    // With the editor built next to the page, the box opens it: here, or in a new tab from a preview.
+    if (EDITOR) {
+      if (/^https?:/.test(EDITOR)) window.open(EDITOR, '_blank', 'noopener')
+      else location.href = EDITOR
+      return
+    }
     if (asked) {
       $('editor-reply').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' })
       return

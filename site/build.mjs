@@ -137,7 +137,12 @@ await browser.close()
 /* ---------- Page ---------- */
 const css = fs.readFileSync(path.join(SITE, 'src', 'site.css'), 'utf8')
 const js = fs.readFileSync(path.join(SITE, 'src', 'site.js'), 'utf8')
-const data = JSON.stringify({ THEMES: out, REPO }).replace(/</g, '\\u003c')
+// The editor sits next to the page on GitHub Pages; the Artifact preview has no editor of its own,
+// so there the box opens the live one in a new tab.
+const SITE_URL = 'https://winchxyz.github.io/backdropkit/'
+// NOEDITOR=1 builds the page as if there were no editor yet (while it is still being made).
+const HAS_EDITOR = !process.env.NOEDITOR && fs.existsSync(path.join(KIT, 'editor', 'app', 'index.html'))
+const dataFor = editor => JSON.stringify({ THEMES: out, REPO, EDITOR: HAS_EDITOR ? editor : null }).replace(/</g, '\\u003c')
 
 const icon = (d, box = 16) => '<svg class="i" viewBox="0 0 ' + box + ' ' + box + '" aria-hidden="true">' + d + '</svg>'
 const I = {
@@ -148,6 +153,8 @@ const I = {
   sidebar: icon('<rect x="2" y="3" width="12" height="10" rx="2"/><path d="M6 3v10"/>'),
   star: icon('<path d="M8 2.2l1.75 3.6 3.95.55-2.87 2.77.7 3.93L8 11.2l-3.53 1.85.7-3.93L2.3 6.35l3.95-.55z"/>'),
   download: icon('<path d="M8 2.5v8M4.5 7.5L8 11l3.5-3.5M3 13.5h10"/>'),
+  expand: icon('<path d="M2.5 6V2.5H6M10 2.5h3.5V6M13.5 10v3.5H10M6 13.5H2.5V10"/>'),
+  collapse: icon('<path d="M6 2.5V6H2.5M13.5 6H10V2.5M10 13.5V10h3.5M2.5 10H6v3.5"/>'),
 }
 
 // winch-ai's mark: an 8 x 8 pixel sun cut by the horizon.
@@ -211,6 +218,7 @@ const body = `<div class="scene" aria-hidden="true"><img id="s0" class="on" alt=
       <h1 class="title" style="margin:0;font-size:inherit;font-weight:500">Animated themes for Claude Code ${I.chevD}</h1>
     </div>
     <div class="side">
+      <button class="tb-btn" id="full-tb" title="See the scene full screen (F)" aria-label="See the scene full screen">${I.expand}</button>
       <a class="tb-btn" href="${REPO}" target="_blank" rel="noopener" title="Star BackdropKit on GitHub" aria-label="Star BackdropKit on GitHub">${I.star}</a>
     </div>
   </div>
@@ -232,7 +240,7 @@ const body = `<div class="scene" aria-hidden="true"><img id="s0" class="on" alt=
 
   <div class="msg bot">
     ${who}
-    <p>Here they are. Pick one and this page switches to it, the way it would look in the app at this hour. Drag along the day under it, or play the day, to see every time of day.</p>
+    <p>Here they are. Pick one and this page switches to it, the way it would look in the app at this hour. Drag along the day under it or play the day to see every hour, and open it full screen to see the picture alone.</p>
     <div class="shelf">
       <div class="shelf-head"><span>${n} themes</span>
         <div class="arrows"><button class="round" id="prev" aria-label="Earlier themes">${I.chevL}</button><button class="round" id="next" aria-label="More themes">${I.chevR}</button></div>
@@ -256,6 +264,7 @@ const body = `<div class="scene" aria-hidden="true"><img id="s0" class="on" alt=
         </div>
         <div class="actions">
           <a class="btn primary" id="dl" href="#">${I.download}<span id="dl-label">Download</span></a>
+          <button class="btn" id="full" title="Full screen (F)">${I.expand}Full screen</button>
           <a class="btn" href="#install">How to install</a>
           <span class="note" id="dl-note"></span>
         </div>
@@ -289,8 +298,13 @@ const body = `<div class="scene" aria-hidden="true"><img id="s0" class="on" alt=
 
   <div class="msg bot">
     ${who}
-    <p>Soon. A theme editor is on the way: layers, pixel brushes, motion, light and the time of day, exported as the same kind of archive. It will open from the box below.</p>
-    <div class="status"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Building the theme editor</div>
+    ${
+      HAS_EDITOR
+        ? `<p>Yes, in the editor. Start from one of these themes, your own picture or a blank scene, then stack layers, paint cell by cell, add motion and give every colour its time of day. It checks the scene against the app's player as you work, and exports the same archive and install prompt as the themes here.</p>
+    <div class="actions"><a class="btn primary" id="open-editor" href="editor/">Open the editor</a><span class="note">It runs in your browser, and your work stays on your computer.</span></div>`
+        : `<p>Soon. A theme editor is on the way: layers, pixel brushes, motion, light and the time of day, exported as the same kind of archive. It will open from the box below.</p>
+    <div class="status"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Building the theme editor</div>`
+    }
   </div>
 
   <p class="fine" id="fine">Community project, not affiliated with Anthropic. Claude and Claude Code are trademarks of Anthropic. <a href="${REPO}" target="_blank" rel="noopener">Source on GitHub</a></p>
@@ -305,7 +319,15 @@ const body = `<div class="scene" aria-hidden="true"><img id="s0" class="on" alt=
   <div class="under"><span>winch-ai</span><span>BackdropKit</span></div>
 </div>
 
-<script>window.BK = ${data}</script>
+<div class="full-bar" id="full-bar" role="toolbar" aria-label="Full screen" hidden>
+  <button class="round" id="full-prev" title="Previous theme (←)" aria-label="Previous theme">${I.chevL}</button>
+  <span class="full-now" id="full-now" aria-live="polite"></span>
+  <button class="round" id="full-next" title="Next theme (→)" aria-label="Next theme">${I.chevR}</button>
+  <button class="btn" id="full-play" aria-pressed="false">Play the day</button>
+  <button class="btn" id="full-exit" title="Exit full screen (Esc)">${I.collapse}Exit</button>
+</div>
+
+<script>window.BK = __DATA__</script>
 <script>${js}</script>`
 
 const TITLE = 'BackdropKit'
@@ -319,10 +341,11 @@ const full =
   '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n' +
   '<title>' + TITLE + '</title>\n<meta name="description" content="' + DESC + '">\n' +
   '<meta property="og:title" content="BackdropKit"><meta property="og:description" content="' + DESC + '">\n' +
-  FONTS + '\n<style>\n' + css + '</style>\n</head>\n<body>\n' + body + '\n</body>\n</html>\n'
+  FONTS + '\n<style>\n' + css + '</style>\n</head>\n<body>\n' + body.replace('__DATA__', () => dataFor('editor/')) + '\n</body>\n</html>\n'
 const fragment =
   '<title>' + TITLE + '</title>\n<meta name="description" content="' + DESC + '">\n' +
-  '<meta name="claude:viewport-fit-sides" content="cover">\n' + FONTS + '\n<style>\n' + css + '</style>\n' + body + '\n'
+  '<meta name="claude:viewport-fit-sides" content="cover">\n' + FONTS + '\n<style>\n' + css + '</style>\n' +
+  body.replace('__DATA__', () => dataFor(SITE_URL + 'editor/')).replace('href="editor/"', 'href="' + SITE_URL + 'editor/" target="_blank" rel="noopener"') + '\n'
 
 fs.writeFileSync(path.join(DIST, 'index.html'), full)
 fs.writeFileSync(path.join(DIST, 'artifact.html'), fragment)

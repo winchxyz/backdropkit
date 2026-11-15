@@ -1,9 +1,10 @@
 // BackdropKit landing: a Claude Code chat with winch-ai, over the theme it is showing.
-// window.BK holds the data the build wrote: { THEMES, REPO }. Each theme is
+// window.BK holds the data the build wrote: { THEMES, REPO, EDITOR } (EDITOR is the editor's
+// address, or null while there is none). Each theme is
 // { slug, name, line, about, hero, thumb, zip: { file, name, bytes } | null,
 //   moments: [{ id, name, file, tone, bytes }] }.
 ;(() => {
-  const { THEMES, REPO } = window.BK
+  const { THEMES, REPO, EDITOR } = window.BK
   const $ = id => document.getElementById(id)
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
   const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -69,6 +70,7 @@
     showScene(m.file)
     root.dataset.tone = m.tone
     $('now').textContent = t.name + (t.moments.length > 1 ? ' · ' + m.name : '') + (preview === null ? '' : ' · ' + hhmm(min))
+    $('full-now').textContent = t.name + (t.moments.length > 1 ? ' · ' + m.name : '') + ' · ' + hhmm(min)
     renderDay(min)
   }
 
@@ -136,25 +138,31 @@
   // Play the day: an hour a second, from where the line is, once round the clock.
   let playing = 0
   let played = 0
+  function playLabel(on) {
+    for (const id of ['play', 'full-play']) {
+      $(id).textContent = on ? 'Pause' : 'Play the day'
+      $(id).setAttribute('aria-pressed', String(on))
+    }
+  }
   function stop() {
     clearInterval(playing)
     playing = 0
-    $('play').textContent = 'Play the day'
-    $('play').setAttribute('aria-pressed', 'false')
+    playLabel(false)
   }
-  $('play').addEventListener('click', () => {
+  function togglePlay() {
     if (playing) return stop()
     if (preview === null) preview = minuteNow()
     played = 0
-    $('play').textContent = 'Pause'
-    $('play').setAttribute('aria-pressed', 'true')
+    playLabel(true)
     playing = setInterval(() => {
       preview = (preview + 5) % 1440
       played += 5
       apply()
       if (played >= 1440) stop()
     }, 1000 / 12)
-  })
+  }
+  $('play').addEventListener('click', togglePlay)
+  $('full-play').addEventListener('click', togglePlay)
   $('scrub').addEventListener('input', e => {
     stop()
     preview = Number(e.target.value)
@@ -164,6 +172,66 @@
     stop()
     preview = null
     apply()
+  })
+
+  /* ---------- Full screen: the scene alone ---------- */
+  // The chat, bars and composer step aside (the page keeps its scroll), the browser goes full
+  // screen where it may (a preview frame can refuse; the page still shows the scene alone), and a
+  // small bar stays for the theme, the hour and the way out. It hides when the pointer rests.
+  let idle = 0
+  function wake() {
+    if (!root.dataset.full) return
+    root.dataset.full = 'on'
+    clearTimeout(idle)
+    idle = setTimeout(() => {
+      if (root.dataset.full && !$('full-bar').matches(':hover, :focus-within')) root.dataset.full = 'idle'
+    }, 2600)
+  }
+  function enterFull() {
+    if (root.dataset.full) return
+    root.dataset.full = 'on'
+    $('full-bar').hidden = false
+    wake()
+    const el = document.documentElement
+    if (el.requestFullscreen && !document.fullscreenElement) el.requestFullscreen({ navigationUI: 'hide' }).catch(() => {})
+  }
+  function leaveFull() {
+    if (!root.dataset.full) return
+    delete root.dataset.full
+    $('full-bar').hidden = true
+    clearTimeout(idle)
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
+  }
+  const stepTheme = d => {
+    choose((pick + d + THEMES.length) % THEMES.length)
+    wake()
+  }
+  $('full').addEventListener('click', enterFull)
+  $('full-tb').addEventListener('click', enterFull)
+  $('full-exit').addEventListener('click', leaveFull)
+  $('full-prev').addEventListener('click', () => stepTheme(-1))
+  $('full-next').addEventListener('click', () => stepTheme(1))
+  document.addEventListener('fullscreenchange', () => {
+    if (!document.fullscreenElement) leaveFull()
+  })
+  for (const ev of ['pointermove', 'pointerdown', 'wheel']) document.addEventListener(ev, wake, { passive: true })
+  document.addEventListener('keydown', e => {
+    if (e.metaKey || e.ctrlKey || e.altKey) return
+    const k = e.key
+    if (root.dataset.full) {
+      if (k === 'Escape' || k === 'f' || k === 'F') {
+        e.preventDefault()
+        leaveFull()
+      } else if (k === 'ArrowLeft' || k === 'ArrowRight') {
+        e.preventDefault()
+        stepTheme(k === 'ArrowLeft' ? -1 : 1)
+      } else wake()
+      return
+    }
+    if ((k === 'f' || k === 'F') && !e.target.closest('textarea, [contenteditable], input:not([type="range"])')) {
+      e.preventDefault()
+      enterFull()
+    }
   })
 
   /* ---------- Install ---------- */
@@ -264,6 +332,12 @@
   }
   let asked = false
   $('compose').addEventListener('click', () => {
+    // With the editor built next to the page, the box opens it: here, or in a new tab from a preview.
+    if (EDITOR) {
+      if (/^https?:/.test(EDITOR)) window.open(EDITOR, '_blank', 'noopener')
+      else location.href = EDITOR
+      return
+    }
     if (asked) {
       $('editor-reply').scrollIntoView({ behavior: reduced ? 'auto' : 'smooth', block: 'center' })
       return
