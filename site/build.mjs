@@ -337,10 +337,12 @@ const FONTS =
   '<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>' +
   '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:opsz,wght@14..32,400..700&display=swap">'
 
+// The tab icon (the editor's): a moon over a dark ridge, so the browser does not ask for /favicon.ico.
+const ICON = `<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' rx='3' fill='%23243056'/%3E%3Crect x='9' y='4' width='3' height='3' fill='%23f6c26b'/%3E%3Cpath d='M0 11h4v-1h3v-1h3v1h3v1h3v5H0z' fill='%23101627'/%3E%3C/svg%3E">`
 const full =
   '<!doctype html>\n<html lang="en">\n<head>\n<meta charset="utf-8">\n' +
   '<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n' +
-  '<title>' + TITLE + '</title>\n<meta name="description" content="' + DESC + '">\n' +
+  '<title>' + TITLE + '</title>\n<meta name="description" content="' + DESC + '">\n' + ICON + '\n' +
   '<meta property="og:title" content="BackdropKit"><meta property="og:description" content="' + DESC + '">\n' +
   FONTS + '\n<style>\n' + css + '</style>\n</head>\n<body>\n' + body.replace('__DATA__', () => dataFor('editor/')) + '\n</body>\n</html>\n'
 const fragment =

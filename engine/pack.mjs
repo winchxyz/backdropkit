@@ -31,8 +31,19 @@ import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import zlib from 'node:zlib'
+
 import { HERO_ORDER, MOMENT_NAMES, MOMENT_ORDER, MOMENT_OVERRIDES, REPO, THEMES } from '../app/tools/catalog.mjs'
-import { unzip, zip } from '../app/tools/zip.mjs'
+// The archive's text, the zip writer and the look of a moment are shared with the editor's
+// exporter (editor/lib), so both make archives the same way.
+import { archiveEntries, heroOf, themeJs } from '../editor/lib/archive.js'
+import { glassOf, stillOf } from '../editor/lib/look.js'
+import { unzip as unzipBytes, zip as zipBytes } from '../editor/lib/zip.js'
+
+export { glassOf }
+const deflate = b => zlib.deflateRawSync(b, { level: 9 })
+const zip = entries => Buffer.from(zipBytes(entries, { deflate }))
+const unzip = buf => unzipBytes(buf, { inflate: b => zlib.inflateRawSync(b) }).map(e => ({ name: e.name, data: Buffer.from(e.data) }))
 
 const ENGINE = path.dirname(fileURLToPath(import.meta.url))
 const KIT = path.resolve(ENGINE, '..')
@@ -167,12 +178,6 @@ export async function closeStills() {
   page = undefined
 }
 
-// The scene with its motion held at the first frame: every animation paused at its start.
-function stillOf(svg) {
-  const pause = '*{animation-play-state:paused!important}'
-  return svg.includes('</style>') ? svg.replace('</style>', pause + '</style>') : svg.replace(/<svg\b[^>]*>/, m => m + '<style>' + pause + '</style>')
-}
-
 // A still of the scene as the app draws it (an <img> filling the window), and what is measured
 // from it: `luma`, the mean brightness (0 to 1, Rec. 601 on the encoded values, as
 // site/build.mjs measures it) of the middle of the picture, where the chat column sits: x from
@@ -241,175 +246,7 @@ export async function still(svg) {
   return { hash, png, ...stats, cached: false }
 }
 
-// OKLab, from and to linear sRGB.
-function oklab([r, g, b]) {
-  const l = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b)
-  const m = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b)
-  const s = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b)
-  return [
-    0.2104542553 * l + 0.793617785 * m - 0.0040720468 * s,
-    1.9779984951 * l - 2.428592205 * m + 0.4505937099 * s,
-    0.0259040371 * l + 0.7827717662 * m - 0.808675766 * s,
-  ]
-}
-function linear([L, a, b]) {
-  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3
-  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3
-  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3
-  return [
-    4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s,
-    -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s,
-    -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s,
-  ]
-}
-const encode = v => {
-  const c = Math.min(1, Math.max(0, v))
-  return Math.round((c <= 0.0031308 ? 12.92 * c : 1.055 * c ** (1 / 2.4) - 0.055) * 255)
-}
-const hex = rgb => '#' + rgb.map(v => encode(v).toString(16).padStart(2, '0')).join('')
-const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v))
-
-// The tone and the frosted glass of a moment, from its still. Like Sunfield's glass, the tint
-// keeps the hue of the scene and stays smoky, never milky: over a light scene a pale tint
-// (OKLab lightness about 0.91, the scene's colour cut to under half, at most 0.04), over a
-// dark one a deep tint (lightness 0.18 to 0.3, darker for a darker scene, the scene's colour
-// a little stronger, at most 0.06). Opacity is 0.5 over a light scene and 0.55 over a dark
-// one, 0.6 where the middle of a dark scene is mid-toned (as Sunfield's sunrise glass is).
-// Measured on Sunfield's own scenes, this lands within a few steps of its hand-picked glass.
-export function glassOf({ luma, avg }) {
-  const dark = luma < 0.5
-  const [L, a, b] = oklab(avg)
-  const chroma = Math.hypot(a, b)
-  const hue = Math.atan2(b, a)
-  const tL = dark ? clamp(0.17 + 0.2 * L, 0.18, 0.3) : clamp(0.87 + 0.06 * L, 0.88, 0.93)
-  let tC = dark ? Math.min(0.06, 1.2 * chroma) : Math.min(0.04, 0.45 * chroma)
-  let rgb = linear([tL, tC * Math.cos(hue), tC * Math.sin(hue)])
-  while (tC > 1e-4 && rgb.some(v => v < 0 || v > 1)) {
-    tC *= 0.9
-    rgb = linear([tL, tC * Math.cos(hue), tC * Math.sin(hue)])
-  }
-  const opacity = dark ? (luma >= 0.38 ? 0.6 : 0.55) : 0.5
-  return { tone: dark ? 'dark' : 'light', tint: hex(rgb), opacity }
-}
-
 /* ---------- The mod ---------- */
-
-// What each hooks file is, for the README.
-const HOOK_NOTES = {
-  'register.tsx': s => `sets the theme when a session starts, picks the scene for the time of day, and adds /${s}-off, /${s}-on and /${s}-time`,
-  'register.test.tsx': () => 'tests for register.tsx (claude plugin test mod)',
-  'theme.js': () => "the theme: its moments, the hour each starts, the panels' tone and glass over each, and each scene as one animated SVG string",
-  'colors.js': () => 'the colours of the light and the dark look, and the blur of the frosted glass',
-  'make-colors.js': () => "Anthropic's colour helper, copied from Claude Code's plugin-authoring skill",
-  'hooks.json': () => 'names register.tsx as the module to load',
-}
-
-function themeJs(theme, moments) {
-  const lines = moments.map(
-    m =>
-      '    { id: ' + JSON.stringify(m.id) + ', name: ' + JSON.stringify(m.name) + ', start: ' + m.start + ', dark: ' + (m.tone === 'dark') +
-      ', tint: ' + JSON.stringify(m.tint) + ', opacity: ' + m.opacity + ',\n      alt: ' + JSON.stringify(m.alt) + ',\n      svg: ' + JSON.stringify(m.text) + ' },',
-  )
-  return (
-    '// Generated by the BackdropKit packer for the theme ' + theme.name + '. Do not edit: the scenes and the\n' +
-    "// words come from the BackdropKit project, and packing again writes this file anew. Each scene\n" +
-    '// is one animated SVG document, as the app plays it, and each moment lasts from its start hour\n' +
-    '// until the next one starts.\n' +
-    'export const THEME = {\n' +
-    '  slug: ' + JSON.stringify(theme.slug) + ',\n' +
-    '  name: ' + JSON.stringify(theme.name) + ',\n' +
-    '  moments: [\n' +
-    lines.join('\n') + '\n' +
-    '  ],\n' +
-    '}\n'
-  )
-}
-
-function description(theme, single) {
-  const line = theme.line.replace(/\.\s*$/, '')
-  const what = line.charAt(0).toLowerCase() + line.slice(1)
-  const how = single ? 'the same at every hour' : 'that follows your clock'
-  return `${theme.name}: ${what}, as an animated pixel-art scene behind the conversation ${how}. ${CREDIT}`
-}
-
-function readme(theme, moments, hooks) {
-  const s = theme.slug
-  const single = moments.length === 1
-  const list = hooks
-    .map(f => {
-      const note = HOOK_NOTES[f]?.(s) ?? (f.endsWith('.d.ts') ? 'type declarations for ' + f.replace('.d.ts', '.js') : '')
-      return '- `mod/hooks/' + f + '`' + (note ? ': ' + note + '.' : '')
-    })
-    .join('\n')
-  const when = single
-    ? `It is the same at every hour: one scene, all day.`
-    : `It follows your computer's clock, with one scene for each part of the day:
-
-| Scene | From | To | Panels |
-| --- | --- | --- | --- |
-${moments.map((m, i) => `| ${m.name} | ${clock(m.start)} | ${clock((moments[i + 1] ?? moments[0]).start)} | ${m.tone} |`).join('\n')}
-
-The scene changes within five minutes of its hour, and the app's panels change with it: light
-with dark words over a light scene, dark with pale words over a dark one, the frosted glass
-tinted from the scene.`
-  const keys = moments.map(m => m.name.toLowerCase().replace(/\s+/g, '-'))
-  const use = single
-    ? `- \`/${s}-off\` takes the theme off, in new sessions too; \`/${s}-on\` puts it back.
-- \`/${s}-time\` says when the scene plays: all day, so there is no other moment to preview.`
-    : `- \`/${s}-time\` lists when each scene plays. \`/${s}-time ${keys[keys.length - 1]}\` (or ${keys.slice(0, -1).join(', ')}, or a
-  time like 18:30) previews another moment and runs on from it; \`/${s}-time now\` goes back
-  to your clock.
-- \`/${s}-off\` takes the theme off, in new sessions too; \`/${s}-on\` puts it back.`
-  return `# ${theme.name}
-
-A BackdropKit theme for the Claude desktop app: ${theme.line.charAt(0).toLowerCase() + theme.line.slice(1)} ${aboutOf(theme)}
-
-It is an animated pixel-art scene behind your Claude Code conversation, with the app's colours
-to match. ${when}
-
-${CREDIT}
-
-## What is inside
-
-- \`.claude-plugin/marketplace.json\`: a marketplace with one plugin, named \`backdropkit-${s}\`.
-- \`mod/.claude-plugin/plugin.json\`: the plugin, named \`${s}\`, version ${VERSION}.
-${list}
-- \`preview.png\`: a still of the ${single ? 'scene' : heroOf(moments).name + ' scene'}.
-- \`project.json\`: the theme's project file for the BackdropKit editor (empty for now).
-- \`README.md\`: this file.
-
-Nothing else belongs in the archive. The plugin reads no files and makes no network requests.
-
-## Install by hand
-
-Unpack the archive into a folder you keep (the theme is read from it), for example
-\`~/.claude/backdropkit/${s}\`, then run these two commands with that folder's path:
-
-\`\`\`
-claude plugin marketplace add "<that folder>"
-claude plugin install ${s}@backdropkit-${s} --scope user
-\`\`\`
-
-Run /reload-plugins or start a new session to see the theme. If another theme plugin is on,
-turn it off first (\`claude plugin disable <name>\`): the theme set last wins.
-
-## Use
-
-${use}
-- To remove it: \`claude plugin uninstall ${s}@backdropkit-${s}\`.
-
-The app plays the motion only with the GPU on and reduced motion off; otherwise it shows a
-still frame of the scene.
-`
-}
-
-function heroOf(moments) {
-  for (const id of HERO_ORDER) {
-    const m = moments.find(x => x.id === id)
-    if (m) return m
-  }
-  return moments[0]
-}
 
 // Nothing personal or local may go into an archive: no user name, no home folder, no
 // absolute Windows path.
@@ -464,31 +301,10 @@ async function packTheme(theme, outDir) {
     if (!Buffer.from(back.svg, 'utf8').equals(fs.readFileSync(scenes.find(x => x.id === m.id).file))) throw new Error(`${s}: theme.js check: bytes of ${m.id || 'scene'}`)
   }
 
-  const hookFiles = { ...Object.fromEntries(fs.readdirSync(TEMPLATE).filter(f => fs.statSync(path.join(TEMPLATE, f)).isFile()).map(f => [f, fs.readFileSync(path.join(TEMPLATE, f))])), 'theme.js': js }
-  // The command names in register.tsx are written as literals (so claude plugin validate reads
-  // them as commands the module answers itself): the template holds __SLUG__ in their place.
-  const reg = hookFiles['register.tsx'].toString('utf8')
-  const stamps = reg.split("'__SLUG__-").length - 1
-  if (stamps !== 6) throw new Error(`register.tsx: expected 6 command names to stamp, found ${stamps}`)
-  hookFiles['register.tsx'] = reg.replaceAll("'__SLUG__-", "'" + s + '-')
-  if (hookFiles['register.tsx'].includes('__SLUG__')) throw new Error('register.tsx: a __SLUG__ left after stamping')
-  const hooks = Object.keys(hookFiles).sort()
-  const desc = description(theme, single)
-  const plugin = { name: s, version: VERSION, description: desc, author: { name: 'BackdropKit community project', url: REPO }, homepage: REPO, license: 'MIT' }
-  const marketplace = {
-    name: 'backdropkit-' + s,
-    owner: { name: 'BackdropKit community project', url: REPO },
-    metadata: { description: `${theme.name}, a BackdropKit theme for the Claude desktop app. ${CREDIT}` },
-    plugins: [{ name: s, source: './mod', description: desc, version: VERSION }],
-  }
-  const entries = [
-    { name: '.claude-plugin/marketplace.json', data: JSON.stringify(marketplace, null, 2) + '\n' },
-    { name: 'mod/.claude-plugin/plugin.json', data: JSON.stringify(plugin, null, 2) + '\n' },
-    ...hooks.map(f => ({ name: 'mod/hooks/' + f, data: hookFiles[f] })),
-    { name: 'README.md', data: readme(theme, moments, hooks) },
-    { name: 'preview.png', data: heroOf(moments).png },
-    { name: 'project.json', data: '{}\n' },
-  ]
+  // The template, with theme.js made from these moments and the slug stamped into the six
+  // command names of register.tsx (editor/lib/archive.js, shared with the editor's exporter).
+  const hookFiles = Object.fromEntries(fs.readdirSync(TEMPLATE).filter(f => f !== 'theme.js' && fs.statSync(path.join(TEMPLATE, f)).isFile()).map(f => [f, fs.readFileSync(path.join(TEMPLATE, f))]))
+  const entries = archiveEntries({ theme, moments, hookFiles, preview: heroOf(moments, HERO_ORDER).png, project: '{}\n', by: 'packer', repo: REPO, heroOrder: HERO_ORDER })
   checkClean(s, entries)
   const buf = zip(entries)
   // Read it back: every name and byte must survive.

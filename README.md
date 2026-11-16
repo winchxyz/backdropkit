@@ -58,9 +58,16 @@ Sunfield is its own project; its built archive is in `docs/themes/sunfield.zip`,
 
 `npm install` brings `playwright-core`, which the build and the checks use to render scenes.
 
-## Next
+## Make your own
 
-A theme editor: layers, pixel brushes, motion presets, light and time of day, exported as the same kind of archive. It will open from the box at the bottom of the site.
+**Editor:** https://winchxyz.github.io/backdropkit/editor/ (it also opens from the box at the bottom of the site)
+
+Start from one of the 14 themes, your own art (a picture, sprites, animated GIFs) or a blank scene. Stack layers, paint cell by cell, give your art a look (dither, palettes, pixel shapes, glyphs, outline), add motion and live effects, and give every colour its time of day. The editor checks each scene against the app's limits as you work and exports the same archive and install prompt as the themes above. It runs in your browser; your work stays on your computer.
+
+The app plays pixel scenes only (no embedded pictures), so uploaded art always becomes cells on the 320 x 200 grid; the look decides how.
+
+- `editor/app/`: the editor page. `editor/lib/`: the exporter (project to scenes and archive). `editor/fx/`: the looks. `editor/PROJECT.md`: the project format they share.
+- Checks: `node editor/test/run.mjs <outDir>` (the exporter against the player checks) and `node editor/app/test/e2e.mjs` (the editor end to end, after `EDITOR_ONLY=1 node site/build.mjs` and `node site/serve.mjs`).
 
 ## License
 

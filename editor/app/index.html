@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en" data-tone="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>BackdropKit editor</title>
+<meta name="description" content="Make your own animated pixel-art theme for the Claude Code desktop app, and export it ready to install.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' rx='3' fill='%23243056'/%3E%3Crect x='9' y='4' width='3' height='3' fill='%23f6c26b'/%3E%3Cpath d='M0 11h4v-1h3v-1h3v1h3v1h3v5H0z' fill='%23101627'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:opsz,wght@14..32,400..700&display=swap">
+<link rel="stylesheet" href="editor.css">
+</head>
+<body class="starting">
+<div class="stage" id="stage" aria-label="Scene">
+  <img class="backdrop" id="backdrop" alt="">
+  <canvas id="view"></canvas>
+  <img class="playing" id="playing" alt="" hidden>
+</div>
+
+<header class="top">
+  <nav class="menubar" id="menubar" aria-label="Menu bar">
+    <div class="side" id="menus"></div>
+    <div class="side">
+      <span class="mb-item mb-now" id="now" aria-live="polite"></span>
+      <span class="mb-item mb-clock" id="clock"></span>
+    </div>
+  </nav>
+  <div class="titlebar">
+    <div class="side">
+      <button class="tb-btn" id="toggle-left" data-hint="Layers and tools" data-key="Tab" aria-label="Layers and tools"></button>
+      <button class="title" id="title" data-hint="Rename the theme"><span id="title-name">New theme</span></button>
+      <span class="saved" id="saved" aria-live="polite"></span>
+    </div>
+    <div class="side">
+      <button class="tb-btn wide" id="chat-btn" data-hint="Lay the chat over the scene" data-key="C" aria-pressed="false"></button>
+      <button class="tb-btn wide" id="play-btn" data-hint="Play the exported scene" data-key="P" aria-pressed="false"></button>
+      <button class="tb-btn" id="toggle-right" data-hint="Layer settings and palette" aria-label="Layer settings and palette"></button>
+    </div>
+  </div>
+</header>
+
+<aside class="panel side-l" id="left" aria-label="Tools and layers"></aside>
+<aside class="panel side-r" id="right" aria-label="Layer settings and palette"></aside>
+
+<section class="chatcol" id="chatcol" hidden>
+  <div class="band" aria-hidden="true"></div>
+  <div class="chat" id="chat"></div>
+</section>
+
+<div class="dock" id="dock"></div>
+
+<div class="hint" id="hint" role="tooltip" hidden></div>
+<div class="toast" id="toast" role="status" hidden></div>
+<div class="busy" id="busy" hidden><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span><span id="busy-text"></span></div>
+
+<script type="module" src="editor.js"></script>
+</body>
+</html>
