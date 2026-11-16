@@ -4,7 +4,7 @@ What the editor would like from the exporter (`editor/lib/`), the looks (`editor
 
 ## The contract (editor/PROJECT.md)
 
-1. **Two editor-only fields on image layers.** The editor writes `own: [slot, ...]` (the slots the art's colours were given, so a new look or a move reuses them instead of adding slots) and `lit: true` (the art is taken as drawn by day and relit for each moment's light; without it the art keeps its own colours at every moment). The exporter ignores both, as it should. Please add them to "Image layers" so the next reader knows.
+1. **Done: the editor-only fields of image layers.** `own` and `lit` are in "Image layers", and so is `versions` (other pictures of the same scene for some moments, baked into `byMoment`), which the editor added itself in round 2. The exporter needs nothing new for them.
 
 ## The exporter (editor/lib)
 
@@ -13,6 +13,8 @@ What the editor would like from the exporter (`editor/lib/`), the looks (`editor
 4. **A measure for fitLook.** `fx.fitLook` takes `measure(frames, colors) -> chars` to use the exporter's count instead of the estimate. A helper like `measureLayer(project, layerId, frames, colors, momentId)` (the scene's size with that layer's cells replaced) would let Make it fit aim at the real scene instead of fx's estimate of the other layers.
 5. **The install prompt unwrapped.** `promptFor` hard-wraps long steps with indented continuation lines. The editor joins them for display (Copy gives the original). One line per step would read well at any width, in the editor and in the README.
 6. **The merge level in the checks.** `exportAll` scenes carry `merged`; the editor does not show it yet. A short word for what it means to the visitor ("2 colours merged to fit") from the exporter would keep the wording in one place.
+
+10. **Frames that differ by moment.** `readLayers` in export.js takes `frames` before `byMoment`, so a layer cannot be animated and change picture with the time at once. The editor therefore keeps a layer with time-of-day versions still (an animated picture gives its first frame there). `framesByMoment: { momentId: [cells, ...] }` (or frames read per moment from `byMoment` when it holds arrays) would let a GIF have a night version.
 
 ## The looks (editor/fx)
 

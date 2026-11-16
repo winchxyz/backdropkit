@@ -1,15 +1,17 @@
 // The chat column, as in the app: the start ("What do you want to start from?"), a sample
 // conversation laid over the scene (Show chat), and Export as a short exchange with winch-ai.
-import { S, emit, on, setView } from './state.js'
+import { S, change, emit, goMoment, on, setView } from './state.js'
 import { H, N, W, blankDoc, fromJSON, newLayer, toJSON, validSlug } from './project.js'
 import { THEMES, momentsOf, sceneUrl, thumbUrl } from './themes.js'
 import { pictureFromSvg, buildZip, promptFor, ready } from './adapter.js'
 import { starterDoc } from './starter.js'
 import { pictureCanvas } from './render.js'
-import { ACCEPT, ART_LINE, addImageLayer, firstArt, importFiles, isArtFile, warmAll } from './assets.js'
+import { ACCEPT, ART_LINE, addImageLayer, assetLuma, cleanName, firstArt, importFiles, isArtFile, warmAll } from './assets.js'
+import { drawAsset } from './inspector.js'
+import { GUIDE_URL, markGuideSeen } from './guide.js'
 import { readZip } from './zipread.js'
-import { busy, toast } from './ui.js'
-import { $, copyText, download, h, icon, markHtml, slugify } from './util.js'
+import { busy, menu, toast } from './ui.js'
+import { $, copyText, download, h, hhmm, icon, markHtml, slugify } from './util.js'
 
 const col = () => $('#chatcol')
 const chat = () => $('#chat')
@@ -30,14 +32,15 @@ export function showStart({ back = false } = {}) {
   backdrop()
   const answers = h('div.answers', null,
     answer('image', 'One of the 14 themes', 'Its picture comes in still; you add motion with layers on top.', () => pickTheme()),
-    answer('upload', 'My own art', 'A picture to build on, or a set of sprites and GIFs.', () => ownArt()),
+    answer('upload', 'My own art', 'A picture to build on, a picture for each time of day, or sprites and GIFs.', () => ownArt()),
     answer('blank', 'A blank scene', 'A sky, a sun and moon, ridges and clouds to shape.', () => pickBlank()),
     answer('folder', 'Open a project', 'A project.json, or a theme archive made here.', () => openProject()),
     back ? answer('chevR', 'Back to ' + S.doc.name, 'Carry on where you were.', () => endStart()) : null,
   )
   chat().replaceChildren(
     user('I want to make my own theme.'),
-    bot(p('Good. A theme is a pixel scene that plays behind the app, one picture for each moment of the day, with motion on top.'), p('What do you want to start from?'), answers),
+    bot(p('Good. A theme is a pixel scene that plays behind the app, one picture for each moment of the day, with motion on top.'), p('What do you want to start from?'), answers,
+      h('p.glink', null, h('a', { href: GUIDE_URL, target: '_blank', rel: 'noopener', on: { click: () => markGuideSeen() } }, icon('book'), h('span', null, 'New here? Read the guide')))),
     h('p.fine', null, FOOT),
   )
   chat().scrollTop = 0
@@ -119,24 +122,137 @@ async function ownArt() {
   say(user('My own art.'))
   await startWithArt(files)
 }
-// Art as the start: the largest picture becomes the scene, the rest stand on it.
+// Art as the start. Two to six pictures may be one scene at different times of day: asked
+// first. Otherwise the largest picture becomes the scene and the rest stand on it.
 export async function startWithArt(files) {
   const done = busy('Reading your art')
+  let ids
   try {
     const doc = blankDoc()
     doc.name = 'My theme'
     emit({ loadDoc: doc })
-    const { ids, failed } = await importFiles(files)
-    if (!ids.length) throw new Error(failed.length ? 'Those files could not be read as pictures.' : 'No pictures in that.')
+    const r = await importFiles(files)
+    ids = r.ids
+    if (!ids.length) throw new Error(r.failed.length ? 'Those files could not be read as pictures.' : 'No pictures in that.')
+    if (r.failed.length) toast(r.failed.join(', ') + ' could not be read.', { error: true })
+  } catch (err) {
+    toast(err.message, { error: true })
+    return
+  } finally {
+    done()
+  }
+  const stills = ids.filter(id => S.doc.assets[id].frames.length === 1)
+  if (stills.length >= 2 && stills.length <= 6) return askTimes(ids, stills)
+  await placeArt(ids)
+}
+async function placeArt(ids) {
+  const done = busy('Placing your art')
+  try {
     const assets = S.doc.assets
     const order = ids.slice().sort((a, b) => assets[b].w * assets[b].h - assets[a].w * assets[a].h)
     for (const id of order) await addImageLayer(id)
     endStart()
     setView({ tab: 'look', tool: 'move' })
     if (firstArt()) toast(ART_LINE, { ms: 7000 })
-    if (failed.length) toast(failed.join(', ') + ' could not be read.', { error: true })
+  } finally {
+    done()
+  }
+}
+
+/* ---------- Several pictures of one scene ---------- */
+
+const TIMES = [['sunrise', 'Sunrise'], ['morning', 'Morning'], ['day', 'Day'], ['sunset', 'Sunset'], ['evening', 'Evening'], ['night', 'Night']]
+// Brightest first: the moments a set of pictures most likely shows.
+const GUESS = { 2: ['day', 'night'], 3: ['day', 'sunset', 'night'], 4: ['day', 'sunrise', 'sunset', 'night'], 5: ['day', 'morning', 'sunrise', 'sunset', 'night'], 6: ['day', 'morning', 'sunrise', 'sunset', 'evening', 'night'] }
+// The moments the pictures name, at sensible hours: Day 06:00 and Night 18:00 for two.
+export function momentsFor(kinds) {
+  const has = id => kinds.includes(id)
+  const start = {
+    sunrise: 5,
+    morning: has('sunrise') ? 7 : 6,
+    day: has('morning') ? 10 : has('sunrise') ? 8 : 6,
+    sunset: 17,
+    evening: has('sunset') ? 19 : 18,
+    night: has('evening') ? 21 : has('sunset') ? 20 : 18,
+  }
+  return TIMES.filter(([id]) => has(id)).map(([id, name]) => ({ id, name, start: start[id] })).sort((a, b) => a.start - b.start)
+}
+const hoursLine = ms => ms.map((m, k) => m.name + ' ' + hhmm(m.start * 60) + '–' + hhmm(ms[(k + 1) % ms.length].start * 60)).join(' · ')
+
+async function askTimes(ids, stills) {
+  const lum = await Promise.all(stills.map(id => assetLuma(id).catch(() => 0.5)))
+  const bright = stills.map((id, k) => [id, lum[k]]).sort((a, b) => b[1] - a[1]).map(x => x[0])
+  const at = new Map(bright.map((id, k) => [id, GUESS[stills.length][k]]))
+  const box = h('div.vers')
+  const hours = h('p.hours.mono')
+  const draw = () => {
+    box.replaceChildren(...stills.map(id => {
+      const c = h('canvas', { width: 160, height: 100 })
+      drawAsset(c, id)
+      const kind = at.get(id)
+      const name = TIMES.find(t => t[0] === kind)[1]
+      const pick = e => menu(e.currentTarget, [{ head: 'This picture shows at' }, ...TIMES.map(([k, label]) => ({
+        label,
+        checked: k === kind,
+        run: () => {
+          // A moment another picture has: the two swap.
+          const other = [...at].find(([x, v]) => v === k && x !== id)
+          if (other) at.set(other[0], kind)
+          at.set(id, k)
+          draw()
+        },
+      }))], { place: 'below', align: 'start' })
+      return h('div.ver', null,
+        h('span.pic', null, c),
+        h('span.vname', null, S.doc.assets[id].name),
+        h('button.chip.vchip', { type: 'button', 'aria-haspopup': 'menu', 'data-moment': kind, 'aria-label': S.doc.assets[id].name + ' shows at ' + name + '. Change', on: { click: pick } }, h('span', null, name), icon('chevD')),
+      )
+    }))
+    hours.textContent = hoursLine(momentsFor([...at.values()]))
+  }
+  draw()
+  let answered = false
+  const once = fn => () => {
+    if (answered) return
+    answered = true
+    for (const b of answers.querySelectorAll('button')) b.disabled = true
+    fn()
+  }
+  const answers = h('div.answers', null,
+    answer('sun', 'Yes, one scene', 'Each picture shows at its own time of day, in the same place, with one look.', once(() => oneScene(ids, stills, at))),
+    answer('layers', 'No, separate pieces', 'Each one becomes a layer of its own, shown all day.', once(() => (say(user('No, separate pieces.')), placeArt(ids)))),
+  )
+  say(bot(
+    p(stills.length + ' pictures. Are they the same scene at different times of day?'),
+    p('If they are, they become one layer that switches picture with the time. I guessed each one’s moment from how bright it is: click a moment to change it.'),
+    box,
+    hours,
+    p('The hours can be dragged on the day line later.', 'dim'),
+    answers,
+  ))
+}
+async function oneScene(ids, stills, at) {
+  say(user('Yes, one scene at different times.'))
+  const done = busy('Making the scene')
+  try {
+    const moments = momentsFor([...at.values()])
+    change('Moments of the day', d => {
+      d.moments = moments
+    })
+    // The day picture is the layer's own; the others are its versions.
+    const base = [...at].find(([, k]) => k === 'day')?.[0] || stills[0]
+    const versions = {}
+    for (const [id, k] of at) if (id !== base) versions[k] = id
+    const lid = await addImageLayer(base, { versions, name: cleanName(S.doc.assets[base].name) })
+    // Animated art stands on the scene.
+    for (const id of ids) if (!stills.includes(id)) await addImageLayer(id)
+    if (lid) emit({ selectLayer: lid })
+    endStart()
+    goMoment(at.get(base))
+    setView({ tab: 'layer', tool: 'move' })
+    toast('One scene, ' + stills.length + ' pictures: each shows at its time of day. Move along the day line to see them switch.', { ms: 7000 })
   } catch (err) {
-    toast(err.message, { error: true })
+    toast(err.message || 'That did not work.', { error: true })
   } finally {
     done()
   }

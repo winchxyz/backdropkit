@@ -82,7 +82,8 @@ export function menu(anchor, items, opts = {}) {
     const b = h(
       'button.mi',
       {
-        role: 'menuitem',
+        role: it.checked !== undefined ? 'menuitemcheckbox' : 'menuitem',
+        'aria-checked': it.checked !== undefined ? String(!!it.checked) : null,
         disabled: !!it.disabled,
         on: {
           click: () => {
@@ -91,7 +92,7 @@ export function menu(anchor, items, opts = {}) {
           },
         },
       },
-      h('span.lab', null, it.icon ? icon(it.icon) : null, it.checked !== undefined ? (it.checked ? '✓ ' : '') : null, it.label),
+      h('span.lab', null, it.icon ? icon(it.icon) : null, it.checked !== undefined ? h('span.ck', { 'aria-hidden': 'true' }, it.checked ? '✓' : '') : null, it.label),
       it.key ? h('kbd', null, it.key) : null,
     )
     buttons.push(b)

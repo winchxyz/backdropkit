@@ -7,6 +7,7 @@ import {
 import { GENS, genDefaults, lightContext, rerunAll, runGen, sunPos } from './gen.js'
 import { kindOf, labDist, relight as relightHex } from './color.js'
 import { slugify } from './util.js'
+import { bake, hasVersions, tidyVersions } from './assets.js'
 
 const L = (d, id) => d.layers.find(l => l.id === id)
 const mname = (d, mid) => d.moments.find(m => m.id === mid)?.name || mid
@@ -66,7 +67,7 @@ export function duplicateLayer(id = S.sel) {
     const i = d.layers.findIndex(l => l.id === id)
     if (i < 0) return false
     const src = d.layers[i]
-    const copy = { ...src, id: newId(d.layers, 'l'), name: src.name + ' copy', show: { ...src.show }, motion: { ...src.motion }, byMoment: src.byMoment ? { ...src.byMoment } : null, live: (src.live || []).map(e => ({ ...e })) }
+    const copy = { ...src, id: newId(d.layers, 'l'), name: src.name + ' copy', show: { ...src.show }, motion: { ...src.motion }, byMoment: src.byMoment ? { ...src.byMoment } : null, ...(src.versions ? { versions: { ...src.versions } } : {}), live: (src.live || []).map(e => ({ ...e })) }
     // A copy of art shares its colours; its look gets slots of its own when it changes.
     if (copy.own) copy.own = []
     // A generator copy owns slots of its own once it runs again.
@@ -148,6 +149,8 @@ export function convertToPaint(id = S.sel) {
     delete l.place
     delete l.look
     delete l.own
+    delete l.versions
+    delete l.lit
   })
 }
 export function setLive(id, live, key) {
@@ -264,7 +267,11 @@ export function removeUnused() {
 export function relightFrom(fromMid, targets, slots) {
   change('Relight', d => {
     const from = kindOf(d.moments.find(m => m.id === fromMid))
-    const list = slots || d.palette.map((_, i) => i + 1)
+    // Relight every colour leaves the colours of art with time-of-day versions alone: each
+    // moment already has its own picture's colours there.
+    const kept = new Set()
+    if (!slots) for (const l of d.layers) if (l.kind === 'image' && hasVersions(l, d)) for (const s of l.own || []) kept.add(s)
+    const list = slots || d.palette.map((_, i) => i + 1).filter(s => !kept.has(s))
     d.palette = d.palette.slice()
     for (const s of list) {
       const p = d.palette[s - 1]
@@ -276,7 +283,7 @@ export function relightFrom(fromMid, targets, slots) {
     }
     // Art whose colours were relit keeps that light when its look changes later.
     const touched = new Set(list)
-    for (const l of d.layers) if (l.kind === 'image' && !l.lit && (l.own || []).some(s => touched.has(s))) L(d, l.id).lit = true
+    for (const l of d.layers) if (l.kind === 'image' && !l.lit && !hasVersions(l, d) && (l.own || []).some(s => touched.has(s))) L(d, l.id).lit = true
   })
 }
 
@@ -293,14 +300,21 @@ export function addMoment(spec) {
     d.moments = sortMoments([...d.moments, { id: m.id, name: m.name, start: m.start }])
     const owned = new Set()
     for (const l of d.layers) for (const s of l.gen?.slots || []) owned.add(s)
+    // Your art keeps its own colours (a version's too): its slots take the colours they have at
+    // the moment the new one splits from. Art lit by the time of day is lit again below.
+    const art = new Set()
+    for (const l of d.layers) if (l.kind === 'image') for (const s of l.own || []) art.add(s)
     d.palette = d.palette.map((p, i) => {
       if (owned.has(i + 1)) return p
+      if (art.has(i + 1)) return { ...p, colors: { ...p.colors, [m.id]: p.colors[ref.id] || Object.values(p.colors)[0] } }
       const base = p.colors[ref.id] || Object.values(p.colors)[0]
       return { ...p, colors: { ...p.colors, [m.id]: relightHex(base, rk, nk) } }
     })
     for (const l of d.layers) {
       if (l.byMoment && !l.gen) l.byMoment = { ...l.byMoment, [m.id]: (l.byMoment[ref.id] || l.cells).slice() }
       if (l.show[ref.id] === false) l.show = { ...l.show, [m.id]: false }
+      if (l.versions?.[ref.id]) l.versions = { ...l.versions, [m.id]: l.versions[ref.id] }
+      if (l.kind === 'image' && l.lit && !hasVersions(l, d)) bake(d, l)
     }
     rerunAll(d)
   })
@@ -332,6 +346,12 @@ export function removeMoment(mid) {
         const pos = { ...l.gen.pos }
         delete pos[mid]
         l.gen = { ...l.gen, pos }
+      }
+      if (l.versions) {
+        // The pictures left, each at its moments (the layer's own takes over if it has none).
+        Object.assign(l, tidyVersions(l, { ...l.versions }, d))
+        if (!l.versions) delete l.versions
+        bake(d, l)
       }
     }
     rerunAll(d)

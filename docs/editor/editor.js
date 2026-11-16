@@ -11,12 +11,13 @@ import { initInspector, searchIndex, setTab } from './inspector.js'
 import { initDay, playDayToggle } from './day.js'
 import { showStart, endStart, openProject, pickFiles, runExport, saveProject, startWithArt, toggleChat } from './chat.js'
 import { play, playStep } from './play.js'
-import { ACCEPT, ART_LINE, addImageLayer, firstArt, importFiles, isArtFile, replaceAsset, setPlace, warmAll } from './assets.js'
+import { ACCEPT, ART_LINE, addImageLayer, firstArt, importFiles, isArtFile, replaceAsset, setPlace, setVersionAt, warmAll } from './assets.js'
 import { loadFx } from './fxa.js'
 import { lib } from './adapter.js'
 import { loadLast, saveLast } from './store.js'
 import { ask, busy, closePop, hideHint, menu, popOpen, popover, toast } from './ui.js'
 import { $, $$, MOD, debounce, h, hhmm, icon, isMac, markHtml } from './util.js'
+import { guideSeen, openGuide } from './guide.js'
 
 /* ---------- Start ---------- */
 
@@ -78,20 +79,49 @@ on(what => {
     select(what.selectLayer)
     setTab('layer')
   }
-  if (what.openArt) openArt(what.replace)
+  if (what.openArt) openArt(what.replace, what.version)
   if (what.doc) saveSoon()
   if (what.doc || what.loaded) titleText()
-  if (what.time || what.moment || what.loaded || what.doc) nowText()
-  if (what.luma !== undefined && !document.body.classList.contains('starting')) tone(what.luma)
+  if (what.time || what.moment || what.loaded || what.doc) {
+    nowText()
+    // The scene follows the project and the time (the day line, Play the day, undo).
+    draw()
+  }
+  if (what.luma !== undefined && panels === 'scene' && !document.body.classList.contains('starting')) applyTone()
   if (what.view || what.tool) {
     $('#chat-btn').setAttribute('aria-pressed', String(!!S.chat))
     $('#play-btn').setAttribute('aria-pressed', String(!!S.play))
     draw()
   }
 })
-function tone(l) {
-  document.documentElement.dataset.tone = l < 0.5 ? 'dark' : 'light'
+/* ---------- The panels' tone ---------- */
+
+// The panels keep one tone while you work: dark by default, or light. "Follow the scene" is
+// what the app does with an installed theme (light ink over a dark scene and the other way
+// round), for those who want to see that match as they work. Kept in this browser.
+const PANELS_KEY = 'backdropkit-editor-panels'
+const PANELS = [['dark', 'Dark'], ['light', 'Light'], ['scene', 'Follow the scene']]
+let panels = (() => {
+  try {
+    const v = localStorage.getItem(PANELS_KEY)
+    return PANELS.some(p => p[0] === v) ? v : 'dark'
+  } catch {
+    return 'dark'
+  }
+})()
+function applyTone() {
+  document.documentElement.dataset.tone = panels === 'scene' ? (viewTone() < 0.5 ? 'dark' : 'light') : panels
 }
+function setPanels(v) {
+  panels = v
+  try {
+    localStorage.setItem(PANELS_KEY, v)
+  } catch {
+    /* kept for this visit only */
+  }
+  applyTone()
+}
+applyTone()
 
 /* ---------- Saving: quietly, in this browser ---------- */
 
@@ -135,14 +165,18 @@ const MENUS = () => ({
     { label: 'Zoom out', key: '−', run: () => zoomBy(0.8) },
     { label: 'Cell grid when close', checked: V.grid, run: () => ((V.grid = !V.grid), draw()) },
     'sep',
-    { label: 'Panels', key: 'Tab', checked: !document.body.classList.contains('nopanels'), run: togglePanels },
+    { label: 'Show panels', key: 'Tab', checked: !document.body.classList.contains('nopanels'), run: togglePanels },
     { label: 'Show chat', key: 'C', checked: !!S.chat, run: () => toggleChat() },
     { label: 'Preview motion', key: 'M', checked: V.motion, run: () => setMotionPreview(!V.motion) },
     'sep',
     { label: 'Play the scene', key: 'P', run: () => play() },
     { label: 'Play the day', key: 'Shift+P', run: playDayToggle },
+    'sep',
+    { head: 'Panels' },
+    ...PANELS.map(([v, label]) => ({ label, checked: panels === v, run: () => setPanels(v) })),
   ],
   Help: [
+    { label: 'Guide', run: () => openGuide() },
     { label: 'Keyboard shortcuts', key: '?', run: showKeys },
     { label: 'Why everything is cells', run: () => toast(ART_LINE + ' A scene may hold 131,072 characters.', { ms: 7000 }) },
     'sep',
@@ -172,6 +206,10 @@ function nowText() {
 function titlebar() {
   $('#toggle-left').replaceChildren(icon('sidebar'))
   $('#toggle-right').replaceChildren(icon('panel'))
+  $('#guide-btn').replaceChildren(icon('book'), h('span', null, 'Guide'))
+  // A first visit: a quiet ring and a dot until the guide has been opened once.
+  if (!guideSeen()) $('#guide-btn').classList.add('fresh')
+  $('#guide-btn').addEventListener('click', () => openGuide())
   $('#chat-btn').replaceChildren(icon('chat'), h('span', null, 'Show chat'))
   $('#play-btn').replaceChildren(icon('play'), h('span', null, 'Play'))
   $('#toggle-left').addEventListener('click', () => (innerWidth <= 860 ? sheet('l') : togglePanels()))
@@ -216,11 +254,12 @@ function sheet(side) {
 
 /* ---------- Your art in: open, drop, paste ---------- */
 
-async function openArt(replaceId) {
-  const files = await pickFiles(ACCEPT, !replaceId)
-  if (files.length) artIn(files, { replaceId })
+async function openArt(replaceId, version) {
+  const files = await pickFiles(ACCEPT, !replaceId && !version)
+  if (files.length) artIn(files, { replaceId, version })
 }
-async function artIn(files, { replaceId } = {}) {
+// `version` ({ id, mid }): the picture becomes that layer's version for that moment.
+async function artIn(files, { replaceId, version } = {}) {
   const art = [...files].filter(isArtFile)
   const proj = [...files].find(f => /\.(json|zip)$/i.test(f.name))
   if (!art.length && proj) return openProject(proj)
@@ -233,6 +272,14 @@ async function artIn(files, { replaceId } = {}) {
     if (!ids.length) return
     if (replaceId) {
       await replaceAsset(replaceId, ids[0])
+      return
+    }
+    if (version) {
+      const m = S.doc.moments.find(x => x.id === version.mid)
+      await setVersionAt(version.id, version.mid, ids[0], 'Add a version for ' + (m?.name || 'a moment'))
+      select(version.id)
+      if (S.mid !== version.mid) goMoment(version.mid)
+      toast((m?.name || 'That moment') + ' now shows ' + S.doc.assets[ids[0]].name + '. Move along the day line to see the pictures switch.', { ms: 6000 })
       return
     }
     if (ids.length === 1) {

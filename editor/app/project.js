@@ -156,6 +156,7 @@ export function toJSON(doc) {
       if (l.look) out.look = JSON.parse(JSON.stringify(l.look))
       if (l.own) out.own = l.own.slice()
       if (l.lit) out.lit = true
+      if (l.versions && Object.keys(l.versions).length) out.versions = { ...l.versions }
       if (l.frames && l.frames.length > 1) {
         out.frames = l.frames.map(cellsToB64)
         out.anim = { fps: l.anim?.fps || 10 }
@@ -221,6 +222,11 @@ export function fromJSON(obj) {
     if (l.look && typeof l.look === 'object') out.look = l.look
     if (Array.isArray(l.own)) out.own = l.own.map(n => n | 0)
     if (l.lit === true) out.lit = true
+    if (l.versions && typeof l.versions === 'object') {
+      const v = {}
+      for (const [k, a] of Object.entries(l.versions)) if (ids.includes(k) && typeof a === 'string') v[k] = a
+      if (Object.keys(v).length) out.versions = v
+    }
     return out
   })
   const assets = {}
@@ -235,6 +241,12 @@ export function fromJSON(obj) {
   }
   // An image layer whose art is missing keeps its cells but can no longer re-run its look.
   for (const l of layers) if (l.asset && !assets[l.asset]) delete l.asset
+  // A version whose picture is missing goes; the layer's cells for that moment stay.
+  for (const l of layers) {
+    if (!l.versions) continue
+    for (const k of Object.keys(l.versions)) if (!assets[l.versions[k]] || !l.asset) delete l.versions[k]
+    if (!Object.keys(l.versions).length) delete l.versions
+  }
   // Cells past the palette would draw nothing: clamp them to empty.
   const max = palette.length
   for (const l of layers) for (const arr of arrays(l)) for (let i = 0; i < N; i++) if (arr[i] > max) arr[i] = 0

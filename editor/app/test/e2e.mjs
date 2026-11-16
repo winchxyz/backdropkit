@@ -1,7 +1,9 @@
-// The editor end to end at 1440 x 900, then a phone at 390 x 844: every start, art in (PNG,
-// sprite, GIF), looks and Make it fit, placing, effects, search, painting, generators, colours,
-// moments, motion, Play, checks, export, save, reload, open. Prints one line per step and the
-// console errors; screenshots and downloads go to $OUT (default: <tmp>/backdropkit-editor-e2e).
+// The editor end to end at 1440 x 900, then a phone at 390 x 844: the guide and its button on
+// a first visit, every start, the panels' steady tone, art in (PNG, sprite, GIF), looks and Make
+// it fit, placing, effects, search, painting, generators, colours, moments, motion, Play, checks,
+// export, save, reload, open, and a day and a night picture as one scene through export.
+// Chromium runs with real scrollbars (it hides them by default). Prints one line per step and
+// the console errors; screenshots and downloads go to $OUT (default: <tmp>/backdropkit-editor-e2e).
 // Build the editor and serve docs/ first, from the backdropkit folder:
 //   EDITOR_ONLY=1 node site/build.mjs && node site/serve.mjs
 //   node editor/app/test/e2e.mjs [first word of the steps to run, comma separated]
@@ -32,7 +34,8 @@ async function launch() {
     const exe = build && path.join(dir, build, 'chrome-win64', 'chrome.exe')
     if (exe && fs.existsSync(exe)) executablePath = exe
   }
-  return chromium.launch(executablePath ? { executablePath } : {})
+  // Real scrollbars, as people have them: they take width the panels must leave room for.
+  return chromium.launch({ ...(executablePath ? { executablePath } : {}), ignoreDefaultArgs: ['--hide-scrollbars'] })
 }
 
 const URL = process.env.EDITOR_URL || 'http://localhost:8765/editor/'
@@ -40,8 +43,12 @@ const F = {
   photo: path.join(ART, 'dusk-photo.png'),
   sprite: path.join(ART, 'lantern.png'),
   gif: path.join(ART, 'ball.gif'),
+  day: path.join(ART, 'harbour-day.png'),
+  night: path.join(ART, 'harbour-night.png'),
 }
 fs.writeFileSync(F.photo, photo())
+fs.writeFileSync(F.day, photo(480, 300, { tone: 'day' }))
+fs.writeFileSync(F.night, photo(480, 300, { tone: 'night' }))
 fs.writeFileSync(F.sprite, sprite())
 fs.writeFileSync(F.gif, gif())
 
@@ -145,6 +152,57 @@ await step('start shows four answers', async () => {
   return a
 })
 
+await step('guide button: a quiet ring on a first visit', async () => {
+  const g = await p.$eval('#guide-btn', e => ({ fresh: e.classList.contains('fresh'), shown: getComputedStyle(e).visibility === 'visible' && e.getBoundingClientRect().width > 0, text: e.textContent.trim(), anim: getComputedStyle(e).animationName, ring: getComputedStyle(e).boxShadow }))
+  const link = await p.$eval('.glink a', e => ({ text: e.textContent.trim(), href: e.getAttribute('href'), target: e.target }))
+  await p.screenshot({ path: shot('01b-guide-ring'), clip: { x: 1100, y: 0, width: 340, height: 72 } })
+  assert(g.fresh && g.shown, 'the Guide button is not highlighted: ' + JSON.stringify(g))
+  assert(g.anim === 'none', 'the ring moves: ' + g.anim)
+  assert(/Read the guide/.test(link.text) && link.href === 'guide.html' && link.target === '_blank', JSON.stringify(link))
+  return { button: g.text, link: link.text }
+})
+
+await step('guide opens in a new tab', async () => {
+  const [tab] = await Promise.all([ctx.waitForEvent('page'), p.click('#guide-btn')])
+  await tab.waitForLoadState('domcontentloaded')
+  await tab.waitForSelector('nav.toc a[href^="#"]')
+  const info = await tab.evaluate(() => {
+    const links = [...document.querySelectorAll('nav.toc ol a')].map(a => a.getAttribute('href'))
+    return {
+      title: document.querySelector('h1')?.textContent,
+      sections: document.querySelectorAll('main section[id]').length,
+      broken: links.filter(h => !document.querySelector(h)),
+      tone: document.documentElement.dataset.tone,
+      font: getComputedStyle(document.body).fontFamily,
+      foot: document.querySelector('footer')?.textContent || '',
+    }
+  })
+  await tab.screenshot({ path: shot('01c-guide') })
+  const url = tab.url()
+  await tab.close()
+  assert(/guide\.html$/.test(url), url)
+  assert(info.sections >= 15 && !info.broken.length, JSON.stringify(info))
+  assert(!/Arial|Segoe|Helvetica|system-ui/i.test(info.font), info.font)
+  assert(/not affiliated with Anthropic/.test(info.foot), info.foot)
+  return { url: url.replace(/^.*\/editor\//, ''), sections: info.sections, tone: info.tone }
+})
+
+await step('guide ring gone once opened, after a reload too', async () => {
+  const now = await p.$eval('#guide-btn', e => e.classList.contains('fresh'))
+  await p.reload()
+  await p.waitForSelector('.answer', { timeout: 15000 })
+  await settle(600)
+  const after = await p.$eval('#guide-btn', e => e.classList.contains('fresh'))
+  assert(!now && !after, 'still highlighted: ' + now + ', after reload ' + after)
+  const item = await p.evaluate(() => [...document.querySelectorAll('#menus .mb-item')].map(b => b.textContent))
+  const [g2] = await Promise.all([ctx.waitForEvent('page'), menuBar('Help', 'Guide')])
+  await g2.waitForLoadState('domcontentloaded')
+  const opened = /guide\.html/.test(g2.url())
+  await g2.close()
+  assert(opened, 'Help → Guide did not open the guide')
+  return { menus: item.length }
+})
+
 await step('theme start', async () => {
   await p.click('.answer:has-text("One of the 14 themes")')
   await p.waitForSelector('.tcard')
@@ -159,6 +217,51 @@ await step('theme start', async () => {
   const status = await waitChecks()
   await p.screenshot({ path: shot('03-theme-editor') })
   return { name: d.name, layers: d.layers.length, moments: d.moments.length, palette: d.palette, status }
+})
+
+const tone = () => p.evaluate(() => document.documentElement.dataset.tone)
+await step('panels keep their tone from Night to Day', async () => {
+  const d = await doc()
+  const night = d.moments.find(m => /night/i.test(m.id + m.name)) || d.moments.at(-1)
+  const day = d.moments.find(m => /day/i.test(m.id + m.name)) || d.moments[0]
+  const seen = []
+  for (const m of [night, day, night, day]) {
+    await p.click('.dseg[data-id="' + m.id + '"]')
+    await settle(500)
+    seen.push((await doc()).mid + ':' + (await tone()))
+  }
+  await p.screenshot({ path: shot('03b-day-dark-panels') })
+  assert(seen.every(x => x.endsWith(':dark')), 'the tone changed: ' + seen.join(' '))
+  return seen
+})
+
+await step('View → Panels: Light, kept after a reload', async () => {
+  await menuBar('View', 'Light')
+  await settle(300)
+  const t1 = await tone()
+  await p.reload()
+  await p.waitForSelector('.layers li', { timeout: 20000 })
+  await settle(1200)
+  const t2 = await tone()
+  const checked = await p.evaluate(async () => {
+    document.querySelectorAll('#menus .mb-item')[3].click()
+    await new Promise(r => setTimeout(r, 200))
+    const on = [...document.querySelectorAll('.menu [aria-checked="true"]')].map(e => e.textContent.trim())
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    return on
+  })
+  await p.keyboard.press('Escape')
+  await p.screenshot({ path: shot('03c-light-panels') })
+  await menuBar('View', 'Follow the scene')
+  await settle(300)
+  const t3 = await tone()
+  await menuBar('View', 'Dark')
+  await settle(300)
+  const t4 = await tone()
+  assert(t1 === 'light' && t2 === 'light', 'light: ' + t1 + ', after reload ' + t2)
+  assert(checked.some(t => /Light/.test(t)), 'the menu does not tick Light: ' + checked.join(' | '))
+  assert(t4 === 'dark', 'back to dark: ' + t4)
+  return { light: t1, reload: t2, follow: t3, dark: t4 }
 })
 
 await step('new brings the start back', async () => {
@@ -582,6 +685,125 @@ await step('open an exported zip', async () => {
   await settle(2000)
   const d = await doc()
   return { layers: d.layers.length, name: d.name, assets: d.assets.length }
+})
+
+const sceneAt = mid =>
+  p.evaluate(async mid => {
+    const { S } = await import('./state.js')
+    const { composite } = await import('./render.js')
+    const px = composite(S.doc, mid)
+    let h = 0
+    for (let i = 0; i < px.length; i += 7) h = (h * 31 + px[i]) >>> 0
+    let lum = 0
+    for (let i = 0; i < px.length; i++) lum += ((px[i] & 255) + ((px[i] >> 8) & 255) + ((px[i] >> 16) & 255)) / 765
+    return { hash: h, lum: Math.round((lum / px.length) * 100) / 100 }
+  }, mid)
+await step('day and night: two pictures, one scene', async () => {
+  await menuBar('File', 'New')
+  await p.waitForSelector('.answer')
+  // The night picture first: the guess goes by brightness, not order.
+  await choose('.answer:has-text("My own art")', [F.night, F.day])
+  await p.waitForSelector('.vers .ver', { timeout: 20000 })
+  await settle(700)
+  const chips = await p.$$eval('.ver', e => e.map(v => v.querySelector('.vname').textContent + '=' + v.querySelector('.vchip').dataset.moment))
+  const hours = await p.$eval('.hours', e => e.textContent)
+  await p.screenshot({ path: shot('27-day-night-question') })
+  assert(chips.includes('harbour-day.png=day') && chips.includes('harbour-night.png=night'), 'guess: ' + chips.join(' '))
+  assert(hours === 'Day 06:00–18:00 · Night 18:00–06:00', hours)
+  // A chip changes; picking a moment another picture has swaps the two.
+  await p.click('.ver:has-text("harbour-night") .vchip')
+  await p.click('.menu button:has-text("Day")')
+  await settle(200)
+  const swapped = await p.$$eval('.ver', e => e.map(v => v.querySelector('.vchip').dataset.moment))
+  await p.click('.ver:has-text("harbour-night") .vchip')
+  await p.click('.menu button:has-text("Night")')
+  await settle(200)
+  await p.click('.answer:has-text("Yes, one scene")')
+  await p.waitForFunction(async () => (await import('./state.js')).S.doc.layers.length > 0, null, { timeout: 30000 })
+  await settle(1500)
+  const info = await p.evaluate(async () => {
+    const { S } = await import('./state.js')
+    const l = S.doc.layers[0]
+    const names = id => S.doc.assets[id]?.name
+    return { layers: S.doc.layers.length, moments: S.doc.moments.map(m => m.id + '@' + m.start), own: names(l.asset), versions: Object.fromEntries(Object.entries(l.versions || {}).map(([k, v]) => [k, names(v)])), when: document.querySelector('.lrow .lkind')?.textContent, card: !!document.querySelector('.vlist') }
+  })
+  assert(swapped.join() === 'day,night', 'swap: ' + swapped.join())
+  assert(info.layers === 1 && info.moments.join() === 'day@6,night@18', JSON.stringify(info))
+  assert(info.own === 'harbour-day.png' && info.versions.night === 'harbour-night.png', JSON.stringify(info))
+  assert(/^Day \/ Night/.test(info.when), 'when: ' + info.when)
+  const day = await sceneAt('day')
+  const night = await sceneAt('night')
+  assert(day.hash !== night.hash && night.lum < day.lum, 'day ' + JSON.stringify(day) + ' night ' + JSON.stringify(night))
+  await p.click('.dseg[data-id="day"]')
+  await settle(600)
+  await p.screenshot({ path: shot('28-day-night-day') })
+  await p.click('.dseg[data-id="night"]')
+  await settle(600)
+  const tn = await tone()
+  await p.screenshot({ path: shot('29-day-night-night') })
+  assert(tn === 'dark', 'tone ' + tn)
+  return { swapped, ...info, day: day.lum, night: night.lum }
+})
+
+await step('day and night: export holds a scene for each', async () => {
+  await p.keyboard.press('Control+e')
+  await p.waitForSelector('form.cardbox')
+  const inputs = await p.$$('form.cardbox input.tinput')
+  await inputs[0].fill('Harbour')
+  await inputs[1].fill('harbour')
+  await inputs[2].fill('A harbour by day and by night.')
+  const [dl] = await Promise.all([p.waitForEvent('download', { timeout: 90000 }), p.click('form.cardbox button[type=submit]')])
+  const zp = path.join(ART, dl.suggestedFilename())
+  await dl.saveAs(zp)
+  await p.waitForSelector('.prompt pre', { timeout: 20000 })
+  const entries = unzip(fs.readFileSync(zp), { inflate: b => zlib.inflateRawSync(b) })
+  const tj = entries.find(e => /theme\.js$/.test(e.name))
+  assert(tj, 'no theme.js in ' + entries.map(e => e.name).join(', '))
+  const text = Buffer.from(tj.data).toString('utf8')
+  const moments = [...text.matchAll(/\{ id: ("[^"]*"), name: ("[^"]*"), start: ([\d.]+), dark: (true|false)[\s\S]*?svg: ("(?:[^"\\]|\\.)*") \}/g)].map(m => ({ id: JSON.parse(m[1]), start: +m[3], dark: m[4] === 'true', svg: JSON.parse(m[5]) }))
+  const pj = JSON.parse(Buffer.from(entries.find(e => /project\.json$/.test(e.name)).data).toString('utf8'))
+  await p.keyboard.press('Escape')
+  assert(moments.length === 2, moments.length + ' scenes')
+  assert(moments[0].svg !== moments[1].svg, 'the two scenes are the same')
+  const day = moments.find(m => m.id === 'day')
+  const night = moments.find(m => m.id === 'night')
+  assert(day && night && !day.dark && night.dark, 'tones: ' + moments.map(m => m.id + (m.dark ? ' dark' : ' light')).join(', '))
+  assert(pj.layers[0].versions?.night && pj.layers[0].byMoment?.day && pj.layers[0].byMoment?.night, 'project.json keeps the versions')
+  return { file: dl.suggestedFilename(), scenes: moments.map(m => m.id + '@' + m.start + (m.dark ? ' dark' : ' light') + ' ' + m.svg.length) }
+})
+
+await step('day and night by hand: Add a version', async () => {
+  await menuBar('File', 'New')
+  await p.waitForSelector('.answer')
+  await choose('.answer:has-text("My own art")', F.day)
+  await p.waitForFunction(async () => (await import('./state.js')).S.doc.layers.length > 0, null, { timeout: 30000 })
+  await settle(1500)
+  await tab('Layer')
+  await p.click('#right button:has-text("Add a version for another time of day")')
+  await p.waitForSelector('.menu')
+  const items = await p.$$eval('.menu .mi, .menu button', e => e.map(x => x.textContent.trim()).filter(Boolean))
+  await choose('.menu button:has-text("For Night")', F.night)
+  await p.waitForFunction(async () => !!(await import('./state.js')).S.doc.layers[0]?.versions, null, { timeout: 30000 })
+  await settle(1200)
+  const info = await p.evaluate(async () => {
+    const { S } = await import('./state.js')
+    const l = S.doc.layers[0]
+    return { mid: S.mid, moments: S.doc.moments.map(m => m.id), versions: Object.keys(l.versions || {}), when: document.querySelector('.lrow .lkind')?.textContent, rows: document.querySelectorAll('.vlist .vrow').length }
+  })
+  await p.screenshot({ path: shot('30-version-by-hand') })
+  const sunset = await sceneAt('sunset')
+  const night = await sceneAt('night')
+  assert(info.versions.join() === 'night' && info.mid === 'night', JSON.stringify(info))
+  assert(info.rows === 2 && /\/ Night/.test(info.when), JSON.stringify(info))
+  assert(sunset.hash !== night.hash, 'sunset and night look the same')
+  // Undo takes the version away again.
+  await p.keyboard.press('Control+z')
+  await settle(500)
+  const undone = await p.evaluate(async () => !(await import('./state.js')).S.doc.layers[0].versions)
+  assert(undone, 'undo kept the version')
+  await p.keyboard.press('Control+y')
+  await settle(500)
+  return { items, ...info }
 })
 
 await step('blank start, night', async () => {

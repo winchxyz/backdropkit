@@ -4,8 +4,8 @@ import { S, on, emit, select, setView, layer as getLayer } from './state.js'
 import * as A from './actions.js'
 import { KIND_LABEL, isGen, isImage, paintable, shownAt } from './project.js'
 import { drawThumb } from './render.js'
-import { ART_LINE, addImageLayer, assetUsers, removeAsset, replaceAsset } from './assets.js'
-import { drawAsset, setTab } from './inspector.js'
+import { ART_LINE, addImageLayer, assetUsers, assetsOf, hasVersions, momentsOf, removeAsset, replaceAsset, setVersionAt } from './assets.js'
+import { drawAsset, setTab, versionMenu } from './inspector.js'
 import { menu, ask, toast } from './ui.js'
 import { $, $$, debounce, h, icon, isMac } from './util.js'
 
@@ -139,7 +139,7 @@ function drawList() {
         },
       },
       h('canvas.lt', { width: 64, height: 40, 'data-id': l.id }),
-      h('div.lmeta', null, h('span.lname', null, l.name), h('span.lkind', null, subLine(l, hiddenNow))),
+      h('div.lmeta', { 'data-hint': subLine(l) + (hiddenNow ? '. Not at this moment.' : '') }, h('span.lname', null, l.name), h('span.lkind', null, subLine(l))),
       h('button.eye', { type: 'button', 'aria-label': l.visible ? 'Hide ' + l.name : 'Show ' + l.name, 'data-hint': l.visible ? 'Hide this layer' : 'Show this layer', on: { click: () => A.toggleVisible(l.id) } }, icon(l.visible ? 'eye' : 'eyeOff')),
       h('button.more', { type: 'button', 'aria-label': 'More for ' + l.name, 'data-hint': 'Duplicate, rename, delete', on: { click: e => (select(l.id), rowMenu(e.currentTarget, l, row)) } }, icon('dots')),
     )
@@ -147,22 +147,40 @@ function drawList() {
     rows.push(row)
   }
   if (!rows.length) rows.push(h('li.lempty', null, h('p', null, 'No layers yet.'), h('p.dim', null, 'Add a sky, ridges or paint with +, or drop your own art anywhere.')))
+  else rows.push(h('li.lhint', null, 'Layers stack: the top one covers the ones below. Click one to edit it.'))
   listEl.replaceChildren(...rows)
   thumbsLater()
 }
-function subLine(l, hiddenNow) {
-  const bits = [isImage(l) ? KIND_LABEL.image : KIND_LABEL[l.kind]]
+// A layer's second line: when it shows first, then what it is.
+function subLine(l) {
+  const bits = [whenLine(l), isImage(l) && hasVersions(l) ? assetsOf(l).length + ' pictures' : isImage(l) ? KIND_LABEL.image : KIND_LABEL[l.kind]]
   if (l.motion && l.motion.type !== 'none') bits.push(l.motion.type)
   if (l.live?.length) bits.push(l.live.map(e => e.type).join(', '))
   if (l.frames?.length > 1) bits.push(l.frames.length + ' frames')
-  if (hiddenNow) bits.push('not at this moment')
   return bits.join(' · ')
+}
+// When a layer shows, in words: "All day", "Night only", "Day, Sunset"; with versions of a
+// picture, which moments each picture has: "Day / Night".
+export function whenLine(l, doc = S.doc) {
+  if (!l.visible) return 'Hidden'
+  const ms = doc.moments
+  const on = ms.filter(m => l.show?.[m.id] !== false)
+  if (isImage(l) && hasVersions(l, doc)) {
+    const list = assetsOf(l, doc)
+    const parts = list.map(a => momentsOf(l, a, doc).filter(id => on.some(m => m.id === id)).map(id => ms.find(m => m.id === id).name).join(', ')).filter(Boolean)
+    return parts.join(' / ')
+  }
+  if (on.length === ms.length) return 'All day'
+  if (!on.length) return 'At no moment'
+  if (on.length === 1) return on[0].name + ' only'
+  return on.map(m => m.name).join(', ')
 }
 function rowMenu(anchor, l, row) {
   menu(anchor, [
     { label: 'Rename', run: () => rename(l, row) },
     { label: 'Duplicate', key: (isMac ? '⌘' : 'Ctrl+') + 'D', run: () => A.duplicateLayer(l.id) },
     isGen(l) || isImage(l) ? { label: 'Convert to paint layer', run: () => A.convertToPaint(l.id) } : null,
+    isImage(l) && S.doc.assets?.[l.asset] ? { label: 'Add a version for another time of day…', run: () => (setTab('layer'), versionMenu(anchor instanceof Element && anchor.isConnected ? anchor : row, l)) } : null,
     'sep',
     { label: 'Move up', run: () => A.moveLayer(l.id, S.doc.layers.indexOf(l) + 1), disabled: S.doc.layers.at(-1) === l },
     { label: 'Move down', run: () => A.moveLayer(l.id, S.doc.layers.indexOf(l) - 1), disabled: S.doc.layers[0] === l },
@@ -254,6 +272,7 @@ function assetMenu(at, id, a, sel) {
     { head: a.name },
     { label: 'Add as a new layer', run: () => addImageLayer(id).then(() => setTab('look')) },
     sel && isImage(sel) && sel.asset !== id ? { label: 'Put in place of ' + sel.name, run: () => replaceAsset(sel.id, id) } : null,
+    sel && isImage(sel) && sel.asset && S.doc.moments.length > 1 && !momentsOf(sel, id).includes(S.mid) ? { label: 'Show it in ' + sel.name + ' at ' + (S.doc.moments.find(m => m.id === S.mid)?.name || 'this moment'), run: () => setVersionAt(sel.id, S.mid, id, 'Add a version') } : null,
     'sep',
     { label: 'Remove from the project', disabled: assetUsers(id).length > 0, run: () => (removeAsset(id) ? toast(a.name + ' removed.') : null) },
   ])

@@ -10,6 +10,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:opsz,wght@14..32,400..700&display=swap">
 <link rel="stylesheet" href="editor.css">
+<script>try { if (localStorage.getItem('backdropkit-editor-panels') === 'light') document.documentElement.dataset.tone = 'light' } catch (e) {}</script>
 </head>
 <body class="starting">
 <div class="stage" id="stage" aria-label="Scene">
@@ -33,6 +34,7 @@
       <span class="saved" id="saved" aria-live="polite"></span>
     </div>
     <div class="side">
+      <button class="tb-btn wide" id="guide-btn" data-hint="How to make a theme, step by step. Opens in a new tab." aria-label="Guide"></button>
       <button class="tb-btn wide" id="chat-btn" data-hint="Lay the chat over the scene" data-key="C" aria-pressed="false"></button>
       <button class="tb-btn wide" id="play-btn" data-hint="Play the exported scene" data-key="P" aria-pressed="false"></button>
       <button class="tb-btn" id="toggle-right" data-hint="Layer settings and palette" aria-label="Layer settings and palette"></button>

@@ -8,7 +8,10 @@ The BackdropKit editor: a static page where anyone makes an animated pixel-art b
 EDITOR_ONLY=1 node site/build.mjs     # copies app, lib, fx and the mod hooks into docs/editor/
 node site/serve.mjs                   # http://localhost:8765/editor/
 node editor/app/test/e2e.mjs          # the end-to-end test (needs the server)
+node editor/app/test/fit.mjs          # nothing cut, at six sizes with real scrollbars
 ```
+
+Both tests launch Chromium with real scrollbars (`ignoreDefaultArgs: ['--hide-scrollbars']`): headless Chromium hides them by default, which hid the 15 to 17 pixels they take on Windows. `PLAYWRIGHT_CORE` may point at a playwright-core `index.mjs`; `OUT` sets where screenshots go.
 
 The page also opens from `editor/app/` itself, without `lib/` and `fx/` next to it: then an estimate stands in for the checks, Play shows the editor's own preview, Export says the exporter is not there, and a small built-in look engine stands in for fx. Everything else works.
 
@@ -17,14 +20,15 @@ The page also opens from `editor/app/` itself, without `lib/` and `fx/` next to 
 A Claude Code window with the scene behind it, filling the window the way the app fills it (bottom-centred, cropped):
 
 - **Menu bar**: BackdropKit, File, Edit, View, Help (real menus with their keys), the moment and time on show, and a clock.
-- **Title row**: `<name> ⌄` (rename, line, slug), the save state, Show chat, Play, and the two panel toggles.
-- **Left** (like the sessions list): tools, the layers (top first; drag to reorder, double-click to rename, a menu per layer), and **Your art** (the assets strip: click to add as a layer, right-click for more, drop files anywhere).
-- **Right**: the inspector, one frosted panel with a rail of tabs (Layer, Look, Colour, Motion, Effects), cards of controls, and a help line at its foot that says what the control under the pointer does.
+- **Title row**: `<name> ⌄` (rename, line, slug), the save state, Guide, Show chat, Play, and the two panel toggles. On a first visit Guide wears a quiet ring and a dot (no blinking, no pulse) until the guide has been opened once (`localStorage` key `backdropkit-editor-guide`; if storage fails, the ring simply shows).
+- **Left** (like the sessions list): tools, the layers (top first; drag to reorder, double-click to rename, a menu per layer), and **Your art** (the assets strip: click to add as a layer, right-click for more, drop files anywhere). Each layer's line says when it shows first: "All day", "Night only", "Day, Sunset", or for a layer with pictures for different times "Day / Night · 2 pictures". A one-line hint under the list says how layers stack.
+- **Right**: the inspector, one frosted panel with a rail of tabs (Layer, Look, Colour, Motion, Effects), cards of controls, and a help line at its foot that says what the control under the pointer does. The help line keeps room for four lines, so a longer help never moves the controls under the pointer. An image layer has a **Times of day** card: its pictures, when each shows, "Add a version for another time of day…", and "Split into layers".
 - **Bottom**: the day bar, shaped like the composer: the time, the moment, Play the day, the checks status, Export, and the 24-hour line split into moments (drag the line, drag a start, + Moment).
 - **Chat column**: the start ("What do you want to start from?" with four answers), a sample chat over the scene (Show chat), and Export as a short exchange with winch-ai.
 - **Narrow screens**: the panels become sheets from the sides (toggles in the title row); the toast moves to the top while a sheet is up.
+- **Guide** (`guide.html`): a page of its own in the editor's look, opened in a new tab from the title row, Help → Guide, and the start ("New here? Read the guide"). A contents list and fifteen scenarios in short numbered steps with the exact labels.
 
-Colour is only for state: the status dot (ok, look at, too big), the cost bar when a layer takes more than 60% of a scene, errors. All colours, radii, blurs, spacing and shadows are tokens at the top of `editor.css`, with a dark and a light set.
+Colour is only for state: the status dot (ok, look at, too big), the cost bar when a layer takes more than 60% of a scene, errors. All colours, radii, blurs, spacing and shadows are tokens at the top of `editor.css`, with a dark and a light set. The panels keep one tone (`data-tone` on the root): dark by default; View → Panels: Dark, Light, Follow the scene (`localStorage` key `backdropkit-editor-panels`).
 
 ## Modules
 
@@ -52,7 +56,10 @@ Colour is only for state: the status dot (ok, look at, too big), the cost bar wh
 | `store.js` | The last project in IndexedDB (autosave, restore on load). |
 | `ui.js`, `util.js` | Popovers, menus, hints, toast; DOM and number helpers, icons. |
 | `zipread.js` | Reading an exported zip back (to open its `project.json`). |
-| `test/e2e.mjs`, `test/art.mjs` | The end-to-end test and its test art (PNG photo, sprite, GIF encoders). |
+| `guide.js` | The Guide button's first-visit ring and opening the guide. |
+| `guide.html` | The guide: self-contained (its own tokens, no scripts but the tone). |
+| `test/e2e.mjs`, `test/art.mjs` | The end-to-end test and its test art (PNG photo, day and night photos, sprite, GIF encoders). |
+| `test/fit.mjs`, `test/overflow.mjs` | Nothing cut: every screen at six sizes; the check that no text ends past its nearest clipping ancestor's inner box. |
 
 ## Keyboard
 
@@ -90,21 +97,30 @@ Help > Keyboard shortcuts shows the same map.
 - **The install prompt is shown reflowed** (the exporter's hard-wrapped lines joined, steps with a hanging indent); Copy gives the exporter's text unchanged.
 - **The keyboard map** is a three-column card, centred, that fits a 900-pixel-high window.
 - **Messages come from winch-ai.** The footer line is "Community project, not affiliated with Anthropic."
+- **Pictures for different times of day are one layer** with `versions: { momentId: assetId }` (editor-only, `editor/PROJECT.md` under Image layers). `asset` is the base picture; a moment without a version shows it. Every picture is placed the same (same width as the base, same foot) and takes the one look; each is baked on its own and the layer's `byMoment` holds each moment's cells, which is all the exporter reads. Slot k at a moment takes the k-th colour (darkest first) of the picture shown then. Versions are stills; "Light by the time of day" does not apply to them (each picture is already that moment's light).
+- **"My own art" with two to six stills asks** whether they are one scene at different times of day. Each picture gets a thumbnail and a moment chip, guessed by brightness (brightest is Day, darkest is Night; three adds Sunset, four Sunrise and Sunset); picking a moment another picture holds swaps the two. Two pictures make Day 06:00–18:00 and Night 18:00–06:00. "Yes, one scene" makes one layer with versions; "No, separate pieces" places them as before. Splitting later is an explicit choice ("Split into layers").
+- **Panels keep one tone** while the day moves. Following the scene flipped every panel from dark to light at sunrise, which read as a glitch while working. Dark is the default; the frost is thick enough (`--panel` 0.92, title and menu bar 0.86) that every panel text reads at 4.4:1 or better over a pure white picture filling the window; light panels read at 4.4:1 or better over pure black.
+- **The canvas redraws on doc, time, moment and load events**, not only on pointer moves.
 
 ## Test log
 
-`node editor/app/test/e2e.mjs`, Chromium (playwright-core 1.62), 1440 x 900, then 390 x 844 as a phone. 2026-11-16, last run: 32 of 32 steps, no console errors.
+`node editor/app/test/e2e.mjs`, Chromium (playwright-core 1.62) with real scrollbars, 1440 x 900, then 1920 x 1080 and 390 x 844 as a phone. 2026-11-16, last run: 40 of 40 steps, no console errors.
 
 | Step | Result |
 | --- | --- |
 | Start shows four answers | One of the 14 themes, My own art, A blank scene, Open a project |
+| Guide button: a quiet ring on a first visit | The ring and dot show, no animation; the start has "New here? Read the guide" |
+| Guide opens in a new tab | guide.html, 15 sections, dark |
+| Guide ring gone once opened, after a reload too | Help → Guide is there too |
 | Theme start | Snowfall Ridge remix: 1 layer, 3 moments, 838 slots, 109,901 of 131,072, ok |
+| Panels keep their tone from Night to Day | dark at Night, Day, Night, Day |
+| View → Panels: Light, kept after a reload | light, light after reload; Follow the scene at night: dark; Dark |
 | New brings the start back | "Back to Snowfall Ridge remix" |
-| Own art start (PNG photo) | One image layer, Look tab open, 15,601 of 131,072 |
+| Own art start (PNG photo) | One image layer, Look tab open, 14,627 of 131,072 |
 | Look preset Night grain | 12 presets with thumbnails; the picked one pressed |
 | Undo and redo the preset | art, nightgrain |
-| Look sliders and selects | Exposure +0.5; Pattern Bayer 16; about 41,316 |
-| Make it fit | A heavy look (64 colours, diffusion everywhere) at about 389,300; Make it fit: about 42,319, "lighter dither, dither only in smooth areas, smoother picture, fewer stray cells, fewer colours, no dither"; undo brings it back |
+| Look sliders and selects | Pattern Bayer 16; about 39,110 |
+| Make it fit | A heavy look at about 390,315; Make it fit: about 71,629, "lighter dither, dither only in smooth areas, smoother picture, fewer stray cells, fewer colours"; undo brings it back |
 | Hold to compare | \ held shows the original |
 | Drop a sprite | Move tool, placed at 0.703, 2,582 cells, Look tab |
 | Place: drag, Alt+wheel, flip | (126, 94) 0.703 → (88, 63) 1.008, flipped |
@@ -117,18 +133,23 @@ Help > Keyboard shortcuts shows the same map.
 | Colour: merge similar, relight | 71 → 64 slots; the photo keeps its colours |
 | Moments: add, rename, drag, remove | Starts 6, 13.25, 17, 21; then Blue hour, Sunset, Night |
 | Motion: drift on clouds, preview | `{ type: 'drift', period: 180, dir: 1 }` |
-| Play the exported scene | "Night · 48,903 characters", more than 8 colours in the played SVG |
-| Checks popover | Blue hour 46,334, Sunset 46,573, Night 48,903; top layers by the exporter's costs |
+| Play the exported scene | "Night · 47,622 characters" |
+| Checks popover | Blue hour 45,053, Sunset 45,292, Night 47,622; top layers by the exporter's costs |
 | Export: zip and install prompt | lantern-dusk.zip with `.claude-plugin/marketplace.json`, `mod/.claude-plugin/plugin.json`, `mod/hooks/*`; the prompt with Copy |
 | Save project | lantern-dusk.project.json, 12 layers, 3 assets |
 | Reload restores the project | 12 layers, Lantern Dusk |
 | Open a project file | 12 layers |
 | Open an exported zip | 12 layers, 3 assets |
+| Day and night: two pictures, one scene | Two pictures given night first; the chips guess Day and Night by brightness; hours "Day 06:00–18:00 · Night 18:00–06:00"; Day picked on the night picture swaps the two, then back; one layer, moments day@6 and night@18, base harbour-day.png, version night harbour-night.png; "Day / Night · 2 pictures"; the scene's mean brightness 0.58 by day, 0.12 at night |
+| Day and night: export holds a scene for each | harbour.zip: theme.js has day@6 (light, 14,009 characters) and night@18 (dark, 13,580), the two SVGs differ; project.json keeps `versions` |
+| Day and night by hand: Add a version | Layer tab → "Add a version for another time of day…" → For Night; the night picture shows at Night only; "Day, Sunset / Night · 2 pictures"; undo and redo |
 | Blank start, night | Day, Sunset and Night cards |
 | Keyboard map | Fits at 1440 x 900 |
 | Wide 1920 x 1080 | Layout holds |
 | Phone: start and blank | No sideways scroll |
 | Phone: sheets | Layers and inspector as sheets |
+
+`node editor/app/test/fit.mjs`, real scrollbars, at 1536 x 864 @1.25, 1366 x 768, 1280 x 720, 1440 x 900, 1920 x 1080 and the 390 x 844 phone: 220 screens (every inspector tab scrolled to the end, menus, popovers, search, the keyboard map, the export form, the day-and-night start, the phone sheets, the guide), nothing cut. 2026-11-16.
 
 Also: `node --check` on every module after each edit; the exporter timed in Node on the test project (exportAll 1.2-1.5 s for 3 moments of 12 layers).
 
@@ -146,6 +167,11 @@ Also: `node --check` on every module after each edit; the exporter timed in Node
 - **The menu bar kept a moment's old name** after a rename.
 - **The keyboard map ran off a 900-pixel window**; it is three columns now.
 - **The art toast said its line on every upload**; once per visit now.
+- **Panels were cut by real scrollbars on Windows.** Headless runs hide scrollbars, so the 15 to 17 pixels a Windows scrollbar takes never showed in tests. Both tests now launch with real scrollbars, and `fit.mjs` checks every screen at six sizes.
+- **The scene kept the old picture after a moment change** until the pointer moved: the canvas only redrew on pointer events. It redraws on doc, time, moment and load events now.
+- **"Add a version for another time of day…" ran off its card** and made the inspector scroll sideways; buttons in a button row wrap now.
+- **A click near the inspector's foot could miss**: the help line grew with a longer help as the pointer arrived, the scroll area shrank, and the button moved out from under the pointer. The help line keeps room for four lines, and the three longest helps are shorter.
+- **The panels washed out over a bright scene** (1.5:1 to 2.3:1 for the dimmer text over a white picture filling the window). The frost is thicker; see Decisions.
 
 ## Not done, and limits
 
@@ -155,3 +181,5 @@ Also: `node --check` on every module after each edit; the exporter timed in Node
 - Art and generator layers are not painted directly: To paint (Layer tab) turns one into a paint layer, and its look or generator stops there.
 - Not tested on Safari or Firefox; the e2e runs Chromium only.
 - The phone layout works but is a small window onto a desktop tool.
+- Pictures for different times of day are stills. A GIF with a night version would need frames per moment in the exporter (`readLayers` takes `frames` before `byMoment`); see NEEDS.md item 10. Animated art in a set comes in as its own layer on top.
+- On the start screen the chat's frost is kept thinner than the panels so the theme behind still shows; the footer line reads at about 3.3:1 over a pure white picture there (more over a real theme).

@@ -1,9 +1,11 @@
 /* The BackdropKit editor: a Claude Code window with the theme being made playing behind it,
    the way the landing page is drawn. The scene fills the window; the window's parts float on
    frosted glass over it: the Mac menu bar and title row at the top, Layers at the left, the
-   inspector at the right, the day in the composer at the bottom. The ink follows the scene:
-   dark ink on pale frost over a light scene, light ink on smoked frost over a dark one. The
-   scene brings the colour; the interface adds colour only for state.
+   inspector at the right, the day in the composer at the bottom. The panels keep one tone
+   while the day moves: smoked frost with light ink by default (View > Panels: Dark, Light or
+   Follow the scene). The frost is thick enough to read over the brightest scene, a white
+   picture filling the window. The scene brings the colour; the interface adds colour only for
+   state.
 
    Every colour, radius, blur, spacing, shadow and size is a token here, so a re-skin is a
    change of this block. */
@@ -11,22 +13,23 @@
   /* Ink and glass (light scenes) */
   --ink: #18212b;
   --ink-2: #4f5b68;
-  --ink-3: #7b8692;
+  --ink-3: #5e6976;
   --ink-inv: #ffffff;
   --glass: rgba(255, 255, 255, 0.4);
   --glass-2: rgba(255, 255, 255, 0.66);
   --glass-line: rgba(255, 255, 255, 0.55);
-  --panel: rgba(246, 249, 252, 0.72);
+  --panel: rgba(246, 249, 252, 0.92);
   --card: rgba(255, 255, 255, 0.62);
   --solid: rgba(255, 255, 255, 0.97);
   --bubble: rgba(255, 255, 255, 0.86);
-  --haze: rgba(244, 248, 252, 0.42);
-  --bar: rgba(250, 252, 255, 0.5);
-  --title: rgba(246, 249, 252, 0.6);
+  --haze: rgba(244, 248, 252, 0.72);
+  --bar: rgba(250, 252, 255, 0.88);
+  --title: rgba(246, 249, 252, 0.88);
   --line: rgba(20, 32, 46, 0.1);
   --line-2: rgba(20, 32, 46, 0.18);
   --track: rgba(20, 32, 46, 0.14);
   --shade: rgba(22, 34, 52, 0.14);
+  --glow: rgba(20, 32, 46, 0.14);
   --ground: #1b2430;
   --hint-bg: #18212b;
   --hint-ink: #ffffff;
@@ -82,22 +85,23 @@
 :root[data-tone="dark"] {
   --ink: #eef2f6;
   --ink-2: #b2bcc7;
-  --ink-3: #8a95a2;
+  --ink-3: #97a2ae;
   --ink-inv: #10151c;
   --glass: rgba(255, 255, 255, 0.07);
   --glass-2: rgba(255, 255, 255, 0.13);
   --glass-line: rgba(255, 255, 255, 0.12);
-  --panel: rgba(16, 20, 28, 0.68);
+  --panel: rgba(16, 20, 28, 0.92);
   --card: rgba(255, 255, 255, 0.05);
   --solid: rgba(24, 28, 37, 0.97);
-  --bubble: rgba(40, 46, 58, 0.88);
-  --haze: rgba(10, 14, 22, 0.46);
-  --bar: rgba(14, 18, 26, 0.5);
-  --title: rgba(16, 20, 28, 0.58);
+  --bubble: rgba(40, 46, 58, 0.92);
+  --haze: rgba(10, 14, 22, 0.66);
+  --bar: rgba(14, 18, 26, 0.86);
+  --title: rgba(16, 20, 28, 0.86);
   --line: rgba(255, 255, 255, 0.09);
   --line-2: rgba(255, 255, 255, 0.18);
   --track: rgba(255, 255, 255, 0.16);
   --shade: rgba(0, 0, 0, 0.34);
+  --glow: rgba(255, 255, 255, 0.16);
   --hint-bg: #f1f4f7;
   --hint-ink: #12171e;
   --ok: #5fd39a;
@@ -166,6 +170,10 @@ button.mb-item:hover, .mb-item.open { background: var(--glass-2) }
 .saved.show { opacity: 1 }
 .saved.err { color: var(--err) }
 body.starting .titlebar .tb-btn, body.starting .saved { visibility: hidden }
+body.starting .titlebar #guide-btn { visibility: visible }
+/* The guide, not yet opened: filled like a primary button, steady (no motion). */
+#guide-btn { position: relative }
+#guide-btn.fresh, #guide-btn.fresh:hover { color: var(--ink-inv); background: var(--ink); box-shadow: 0 0 0 3px var(--glass-2), 0 0 16px var(--glow) }
 
 /* ---- Floating panels ---- */
 .panel {
@@ -200,7 +208,7 @@ label.btn input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor
 
 /* ---- Left: tools, layers, your art ---- */
 .tools { padding: var(--s2) var(--s2) var(--s2); border-bottom: 1px solid var(--line); display: grid; gap: 6px }
-.trow { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px }
+.trow { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px }
 .trow.sub { display: flex; align-items: center; gap: var(--s2); min-height: 28px; padding: 0 2px }
 .tool { height: 32px; display: grid; place-items: center; border: 0; border-radius: var(--r-s); background: none; color: var(--ink-2); transition: background var(--t-fast) ease, color var(--t-fast) ease }
 .tool:hover { background: var(--glass); color: var(--ink) }
@@ -217,15 +225,16 @@ label.btn input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor
 .lhead { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); padding: var(--s3) var(--s2) var(--s1) var(--s3) }
 .lhead h2 { font: 600 var(--fs-s)/1 var(--text); color: var(--ink-2); letter-spacing: 0.01em }
 .art-head { margin-top: var(--s2); border-top: 1px solid var(--line); padding-top: var(--s3) }
-.lscroll { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; padding-bottom: var(--s3); scrollbar-width: thin; scrollbar-color: var(--line-2) transparent }
-.layers { list-style: none; margin: 0; padding: 0 6px; display: grid; gap: 1px }
+.lscroll { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; padding-bottom: var(--s3); scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; scrollbar-gutter: stable }
+.layers { list-style: none; margin: 0; padding: 0 6px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 1px }
 .lrow {
-  display: grid; grid-template-columns: 48px 1fr auto auto; align-items: center; gap: var(--s2);
+  display: grid; grid-template-columns: 48px minmax(0, 1fr) auto auto; align-items: center; gap: var(--s2);
   height: var(--row-h); padding: 0 2px 0 4px; border-radius: var(--r-s); cursor: default; position: relative;
   transition: background var(--t-fast) ease;
 }
 .lrow:hover { background: var(--glass) }
 .lrow[aria-selected="true"] { background: var(--glass-2) }
+.lrow[aria-selected="true"] .lkind { color: var(--ink-2) }
 .lt { width: 48px; height: 30px; border-radius: 4px; display: block; background: var(--shade); box-shadow: 0 0 0 1px var(--line) inset }
 .lmeta { min-width: 0; display: grid; line-height: 1.25 }
 .lname { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
@@ -241,11 +250,12 @@ label.btn input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor
 .lrow.below::after { bottom: -1px }
 .lempty { list-style: none; padding: var(--s2) var(--s2) var(--s1); color: var(--ink-2); font-size: var(--fs) }
 .lempty p { margin: 0 0 4px }
+.lhint { list-style: none; padding: var(--s2) var(--s2) var(--s1); color: var(--ink-3); font-size: var(--fs-xs); line-height: 1.4 }
 .art { padding: 0 var(--s2) }
 .artdrop { width: 100%; display: grid; justify-items: center; gap: 6px; padding: var(--s4) var(--s3); border: 1px dashed var(--line-2); border-radius: var(--r-m); background: none; color: var(--ink-2); font-size: var(--fs-s); line-height: 1.4; text-align: center; transition: background var(--t-fast) ease, color var(--t-fast) ease }
 .artdrop:hover { background: var(--glass); color: var(--ink) }
 .artline { margin: var(--s2) 2px 0; font-size: var(--fs-xs); line-height: 1.45; color: var(--ink-3) }
-.assets { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px }
+.assets { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px }
 .asset { position: relative; padding: 0; border: 0; border-radius: var(--r-s); background: var(--shade); overflow: hidden; aspect-ratio: 4 / 3; box-shadow: 0 0 0 1px var(--line) inset; transition: box-shadow var(--t-fast) ease }
 .asset canvas { width: 100%; height: 100%; display: block }
 .asset:hover { box-shadow: 0 0 0 2px var(--ink) inset }
@@ -253,20 +263,21 @@ label.btn input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor
 .asset .frames { position: absolute; right: 4px; bottom: 4px; padding: 1px 4px; border-radius: 4px; background: var(--solid); color: var(--ink); font: 600 9.5px/1.3 var(--mono) }
 
 /* ---- Right: the inspector, a rail of tabs and cards ---- */
-.insp { display: grid; grid-template-columns: var(--rail) 1fr; height: 100%; min-height: 0 }
+.insp { display: grid; grid-template-columns: var(--rail) minmax(0, 1fr); height: 100%; min-height: 0 }
 .rail { display: grid; align-content: start; gap: 2px; padding: var(--s2) 6px; border-right: 1px solid var(--line) }
 .rt { display: grid; justify-items: center; gap: 3px; padding: 8px 0 7px; border: 0; border-radius: var(--r-m); background: none; color: var(--ink-3); font-size: 10.5px; font-weight: 500; transition: background var(--t-fast) ease, color var(--t-fast) ease }
 .rt svg.i { width: 18px; height: 18px }
 .rt:hover { color: var(--ink); background: var(--glass) }
 .rt[aria-selected="true"] { color: var(--ink); background: var(--glass-2) }
 .ipane { display: flex; flex-direction: column; min-height: 0; min-width: 0 }
-.iscroll { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; padding: var(--s2); display: grid; align-content: start; gap: var(--s2); scrollbar-width: thin; scrollbar-color: var(--line-2) transparent }
-.helpline { flex: none; min-height: 58px; padding: var(--s3) var(--s4); border-top: 1px solid var(--line); font-size: var(--fs-s); line-height: 1.45; color: var(--ink-2) }
-.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-m); padding: var(--s3) var(--s3) var(--s3); display: grid; gap: var(--s3); transition: box-shadow var(--t) ease }
+.iscroll { flex: 1; overflow-y: auto; overflow-x: hidden; min-height: 0; padding: var(--s2); display: grid; grid-template-columns: minmax(0, 1fr); align-content: start; gap: var(--s2); scrollbar-width: thin; scrollbar-color: var(--line-2) transparent; scrollbar-gutter: stable }
+/* Room for four lines, so a longer help does not push the controls up under the pointer. */
+.helpline { flex: none; min-height: calc(4 * 1.45 * var(--fs-s) + 2 * var(--s3) + 1px); padding: var(--s3) var(--s4); border-top: 1px solid var(--line); font-size: var(--fs-s); line-height: 1.45; color: var(--ink-2) }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--r-m); padding: var(--s3) var(--s3) var(--s3); display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: var(--s3); transition: box-shadow var(--t) ease }
 .card.found, .ctl.found { box-shadow: 0 0 0 2px var(--ink) }
 .chead { display: flex; align-items: center; justify-content: space-between; gap: var(--s2); min-height: 20px }
 .chead h3 { font: 600 var(--fs)/1.2 var(--text) }
-.sbody { display: grid; gap: var(--s3) }
+.sbody { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: var(--s3) }
 .card > .sbody:empty { display: none }
 .note { margin: 0; font-size: var(--fs-s); line-height: 1.45; color: var(--ink-2) }
 .note.dim { color: var(--ink-3) }
@@ -276,12 +287,14 @@ label.btn input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor
 .empty h3 { color: var(--ink); font: 600 14px/1.3 var(--display) }
 .empty p { margin: 0 0 var(--s1); font-size: var(--fs); line-height: 1.5 }
 .brow { display: flex; flex-wrap: wrap; gap: 6px }
-.brow .btn { height: 28px; padding: 0 10px; font-size: var(--fs-s) }
+.brow .btn { height: auto; min-height: 28px; padding: 4px 10px; font-size: var(--fs-s); max-width: 100%; white-space: normal; text-align: left; line-height: 1.25 }
 
 /* Controls: label at the left, value at the right */
-.ctl { display: grid; gap: 7px; border-radius: var(--r-s); transition: box-shadow var(--t) ease }
-.ctl.inline { grid-template-columns: 1fr auto; align-items: center; gap: var(--s2) }
-.crow { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2) }
+.ctl { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 7px; border-radius: var(--r-s); transition: box-shadow var(--t) ease }
+.ctl.inline { grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--s2) }
+.crow { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s2); min-width: 0 }
+.crow .cl { min-width: 0 }
+.crow .cv { flex: none }
 .cl { font-size: var(--fs); color: var(--ink) }
 .cv { font: 500 var(--fs-xs)/1 var(--mono); color: var(--ink-2); font-variant-numeric: tabular-nums; cursor: default }
 .range {
@@ -294,8 +307,9 @@ label.btn input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor
 .range::-moz-range-thumb { width: 14px; height: 14px; border: 0; border-radius: 50%; background: var(--solid); box-shadow: 0 0 0 1px var(--line-2), 0 1px 3px var(--shade) }
 .range:active::-webkit-slider-thumb { transform: scale(1.15) }
 .segs { display: flex; gap: 2px; padding: 2px; border-radius: var(--r-s); background: var(--glass); border: 1px solid var(--line) }
-.segs.wrap { display: grid; grid-template-columns: repeat(3, 1fr) }
-.sg { flex: 1 1 auto; height: 26px; padding: 0 var(--s2); border: 0; border-radius: var(--r-xs); background: none; color: var(--ink-2); font-size: var(--fs-s); white-space: nowrap; transition: background var(--t-fast) ease, color var(--t-fast) ease }
+.segs { min-width: 0 }
+.segs.wrap { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)) }
+.sg { flex: 1 1 auto; min-width: 0; height: 26px; padding: 0 var(--s2); border: 0; border-radius: var(--r-xs); background: none; color: var(--ink-2); font-size: var(--fs-s); white-space: nowrap; transition: background var(--t-fast) ease, color var(--t-fast) ease }
 .sg:hover { color: var(--ink) }
 .sg[aria-pressed="true"] { background: var(--solid); color: var(--ink); box-shadow: var(--sh-1); font-weight: 500 }
 .selwrap { position: relative; display: inline-flex; align-items: center }
@@ -313,20 +327,24 @@ label.btn input[type="color"] { position: absolute; inset: 0; opacity: 0; cursor
 .chips { display: flex; flex-wrap: wrap; gap: 6px }
 .chip { height: 26px; padding: 0 10px; border-radius: var(--r-pill); border: 1px solid var(--line-2); background: none; color: var(--ink-3); font-size: var(--fs-s); transition: background var(--t-fast) ease, color var(--t-fast) ease }
 .chip[aria-pressed="true"] { background: var(--ink); color: var(--ink-inv); border-color: var(--ink) }
-.arow { display: grid; grid-template-columns: 96px 1fr; gap: var(--s3); align-items: center }
+.arow { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: var(--s3); align-items: center }
 .athumb { width: 96px; height: 60px; border-radius: var(--r-s); background: var(--shade); box-shadow: 0 0 0 1px var(--line) inset; display: block }
 .ameta { min-width: 0; display: grid; gap: 2px }
 .aname { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap }
 .adim { font-size: var(--fs-xs); color: var(--ink-3) }
+.vlist { display: grid; gap: var(--s1) }
+.vrow { grid-template-columns: 64px minmax(0, 1fr) auto; padding: 4px; border-radius: var(--r-s) }
+.vrow .athumb { width: 64px; height: 40px }
+.vrow.now { background: var(--glass) }
 
 /* Looks: ready-made, drawn on your art */
-.looks { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px }
-.lk { display: grid; gap: 4px; padding: 3px 3px 5px; border: 0; border-radius: var(--r-s); background: none; color: var(--ink-2); font-size: var(--fs-xs); text-align: center; transition: background var(--t-fast) ease }
+.looks { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px }
+.lk { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 4px; padding: 3px 3px 5px; border: 0; border-radius: var(--r-s); background: none; color: var(--ink-2); font-size: var(--fs-xs); text-align: center; transition: background var(--t-fast) ease }
 .lk:hover { background: var(--glass); color: var(--ink) }
 .lk[aria-pressed="true"] { background: var(--glass-2); color: var(--ink); font-weight: 500 }
 .lthumb { width: 100%; aspect-ratio: 120 / 76; display: block; border-radius: var(--r-xs); image-rendering: pixelated; background: var(--shade); box-shadow: 0 0 0 1px var(--line) inset }
 .lk[aria-pressed="true"] .lthumb { box-shadow: 0 0 0 2px var(--ink) }
-.costrow { display: grid; grid-template-columns: 1fr auto; gap: var(--s2); align-items: center; font-size: var(--fs-xs); color: var(--ink-2) }
+.costrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--s2); align-items: center; font-size: var(--fs-xs); color: var(--ink-2) }
 .costbar { height: 4px; border-radius: 2px; background: var(--track); overflow: hidden }
 .costbar i { display: block; height: 100%; background: var(--ink); border-radius: 2px }
 .costbar.warn i { background: var(--warn) }
@@ -375,7 +393,7 @@ body.nopanels .dock { left: 0; right: 0 }
 .dseg { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; padding: 0 var(--s2); font-size: var(--fs-xs); color: var(--ink-3); white-space: nowrap; overflow: hidden; border-left: 1px solid var(--line); transition: background var(--t) ease, color var(--t) ease }
 .dseg:first-child { border-left: 0 }
 .dseg::before { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 3px; background: var(--tint); opacity: 0.85 }
-.dseg span { position: relative }
+.dseg span { position: relative; min-width: 0; overflow: hidden; text-overflow: ellipsis }
 .dseg.on { background: var(--glass-2); color: var(--ink); font-weight: 500 }
 .dknob { position: absolute; top: -4px; bottom: -4px; width: 2px; margin-left: -1px; background: var(--ink); border-radius: 1px; pointer-events: none; z-index: 3 }
 .dknob::before { content: ""; position: absolute; top: -3px; left: -4px; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 2px var(--solid) }
@@ -419,6 +437,7 @@ body.nopanels .dock { left: 0; right: 0 }
 .mi:disabled { opacity: 0.4; cursor: default }
 .mi .lab { display: inline-flex; align-items: center; gap: 9px }
 .mi .lab svg.i { width: 15px; height: 15px }
+.mi .ck { width: 12px; flex: none; text-align: center }
 .msep { height: 1px; background: var(--line); margin: 4px 6px }
 .mhead { padding: 6px 10px 4px; font-size: var(--fs-xs); color: var(--ink-3) }
 .pop h3 { margin: 0 0 4px; font: 600 14px/1.3 var(--display) }
@@ -473,7 +492,10 @@ body.starting .chat { padding-bottom: 40px }
 .user > div { max-width: 86%; padding: var(--s3) var(--s4); border-radius: 11px; background: var(--bubble); border: 1px solid var(--line); box-shadow: var(--sh-1) }
 .who { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; font-size: var(--fs); font-weight: 600 }
 .who .mark { width: 15px; height: 15px }
-.fine { font-size: var(--fs-s); color: var(--ink-3); text-align: center; margin: 4px auto 0 }
+.fine { font-size: var(--fs-s); color: var(--ink-2); text-align: center; margin: 4px auto 0 }
+.glink { text-align: left; margin: var(--s3) 0 0 -10px }
+.glink a { display: inline-flex; align-items: center; gap: 6px; padding: 5px 10px; border-radius: var(--r-s); color: var(--ink-2); text-decoration: none; font-size: var(--fs) }
+.glink a:hover { color: var(--ink); background: var(--glass) }
 .answers { display: grid; gap: var(--s2); margin-top: 14px }
 .answer {
   display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: var(--s3); text-align: left; width: 100%;
@@ -493,6 +515,15 @@ body.starting .chat { padding-bottom: 40px }
 .tcard:hover .pic { transform: translateY(-2px); box-shadow: 0 0 0 2px var(--ink) }
 .tcard b { font-size: var(--fs); font-weight: 600; padding-left: 2px }
 .tcard span.d { font-size: var(--fs-s); color: var(--ink-2); padding-left: 2px; line-height: 1.35 }
+/* Several pictures of one scene: each with the moment it shows at. */
+.vers { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(150px, 100%), 1fr)); gap: var(--s3); margin: 14px 0 var(--s2) }
+.ver { display: grid; gap: 6px; min-width: 0; align-content: start }
+.ver .pic { aspect-ratio: 16 / 10; border-radius: var(--r-m); overflow: hidden; background: var(--shade); box-shadow: var(--sh-1); display: block }
+.ver canvas { width: 100%; height: 100%; display: block; object-fit: contain }
+.vname { font-size: var(--fs-s); color: var(--ink-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-left: 2px }
+.vchip { justify-self: start; display: inline-flex; align-items: center; gap: 4px; color: var(--ink); border-color: var(--line-2); padding: 0 8px 0 10px }
+.vchip:hover { background: var(--glass-2) }
+.hours { font-size: var(--fs-s); color: var(--ink-2); margin: 0 0 4px }
 .cardbox { margin-top: var(--s3); padding: 14px var(--s4); border-radius: 12px; background: var(--bubble); border: 1px solid var(--line); box-shadow: var(--sh-2); display: grid; gap: var(--s3); font-size: 13.5px }
 .cardbox .row, .msg .row { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; margin-top: var(--s3) }
 .cardbox .row { margin-top: 0 }

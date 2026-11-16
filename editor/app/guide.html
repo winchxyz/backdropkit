@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="en" data-tone="dark">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Editor guide · BackdropKit</title>
+<meta name="description" content="How to make a theme in the BackdropKit editor, step by step.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' shape-rendering='crispEdges'%3E%3Crect width='16' height='16' rx='3' fill='%23243056'/%3E%3Crect x='9' y='4' width='3' height='3' fill='%23f6c26b'/%3E%3Cpath d='M0 11h4v-1h3v-1h3v1h3v1h3v5H0z' fill='%23101627'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500&family=Inter:opsz,wght@14..32,400..700&display=swap">
+<script>try { if (localStorage.getItem('backdropkit-editor-panels') === 'light') document.documentElement.dataset.tone = 'light' } catch (e) {}</script>
+<style>
+:root {
+  --ground: #f3f6f9;
+  --ink: #18212b;
+  --ink-2: #4f5b68;
+  --ink-3: #7b8692;
+  --card: rgba(255, 255, 255, 0.7);
+  --line: rgba(20, 32, 46, 0.1);
+  --line-2: rgba(20, 32, 46, 0.18);
+  --code: rgba(20, 32, 46, 0.06);
+  --text: -apple-system, BlinkMacSystemFont, "SF Pro Text", Inter, sans-serif;
+  --display: -apple-system, BlinkMacSystemFont, "SF Pro Display", Inter, sans-serif;
+  --mono: ui-monospace, "SF Mono", "Geist Mono", Menlo, monospace;
+  color-scheme: light;
+}
+:root[data-tone="dark"] {
+  --ground: #11151c;
+  --ink: #eef2f6;
+  --ink-2: #b2bcc7;
+  --ink-3: #8a95a2;
+  --card: rgba(255, 255, 255, 0.04);
+  --line: rgba(255, 255, 255, 0.09);
+  --line-2: rgba(255, 255, 255, 0.18);
+  --code: rgba(255, 255, 255, 0.07);
+  color-scheme: dark;
+}
+* { box-sizing: border-box }
+html { scroll-behavior: smooth; scroll-padding-top: 24px }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto } }
+body { margin: 0; background: var(--ground); color: var(--ink); font: 15px/1.6 var(--text); -webkit-font-smoothing: antialiased }
+a { color: inherit; text-underline-offset: 3px; text-decoration-color: var(--line-2) }
+a:hover { text-decoration-color: currentColor }
+:focus-visible { outline: 2px solid var(--ink); outline-offset: 2px; border-radius: 4px }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 32px 24px 64px; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 48px }
+nav.toc { position: sticky; top: 24px; align-self: start; max-height: calc(100vh - 48px); overflow: auto; font-size: 13px }
+nav.toc .back { display: inline-block; color: var(--ink-2); text-decoration: none; margin-bottom: 20px }
+nav.toc .back:hover { color: var(--ink) }
+nav.toc h2 { font: 600 11px/1 var(--text); letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-3); margin: 0 0 10px }
+nav.toc ol { list-style: none; margin: 0; padding: 0; counter-reset: c }
+nav.toc li { counter-increment: c }
+nav.toc li a { display: grid; grid-template-columns: 22px minmax(0, 1fr); padding: 4px 0; color: var(--ink-2); text-decoration: none }
+nav.toc li a::before { content: counter(c); color: var(--ink-3); font: 12px/1.6 var(--mono) }
+nav.toc li a:hover { color: var(--ink) }
+main { min-width: 0; max-width: 700px }
+header h1 { font: 650 30px/1.2 var(--display); letter-spacing: -0.01em; margin: 0 0 10px }
+header p { color: var(--ink-2); margin: 0 0 8px }
+section { padding-top: 40px; margin-top: 32px; border-top: 1px solid var(--line) }
+section h2 { font: 620 20px/1.3 var(--display); margin: 0 0 12px }
+section h3 { font: 600 15px/1.4 var(--text); margin: 22px 0 6px }
+p { margin: 0 0 12px }
+ol.steps { margin: 0 0 12px; padding-left: 24px }
+ol.steps li { margin: 0 0 8px; padding-left: 4px }
+ol.steps li::marker { color: var(--ink-3); font: 13px var(--mono) }
+ul { margin: 0 0 12px; padding-left: 20px }
+ul li { margin: 0 0 6px }
+.ui { font-weight: 600 }
+.see { color: var(--ink-2) }
+.note { color: var(--ink-2); font-size: 14px }
+kbd { font: 500 12px/1 var(--mono); padding: 2px 6px; border-radius: 5px; border: 1px solid var(--line-2); color: var(--ink-2); white-space: nowrap }
+code { font: 13px/1.5 var(--mono); background: var(--code); padding: 1px 5px; border-radius: 5px; overflow-wrap: anywhere }
+pre { font: 13px/1.6 var(--mono); background: var(--code); padding: 12px 14px; border-radius: 10px; margin: 0 0 12px; white-space: pre-wrap; overflow-wrap: anywhere }
+dl.qa dt { font-weight: 600; margin: 18px 0 4px }
+dl.qa dd { margin: 0; color: var(--ink-2) }
+.keys { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(300px, 100%), 1fr)); gap: 8px 32px }
+.keys h3 { margin-top: 12px }
+.keys dl { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 6px 14px; margin: 0; align-items: baseline }
+.keys dd { margin: 0; color: var(--ink-2) }
+footer { margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--line); color: var(--ink-3); font-size: 13px }
+@media (max-width: 820px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 20px 16px 48px }
+  nav.toc { position: static; max-height: none; overflow: visible }
+  nav.toc ol { columns: 2 150px; column-gap: 20px }
+  nav.toc li { break-inside: avoid }
+  header h1 { font-size: 25px }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" aria-label="Contents">
+  <a class="back" href="./">← Back to the editor</a>
+  <h2>Contents</h2>
+  <ol>
+    <li><a href="#basics">Basics</a></li>
+    <li><a href="#remix">Remix one of the 14 themes</a></li>
+    <li><a href="#one-picture">One picture into a theme</a></li>
+    <li><a href="#day-and-night">Day and night versions</a></li>
+    <li><a href="#more-times">More times of day</a></li>
+    <li><a href="#colours">Colours that follow the time</a></li>
+    <li><a href="#sprites">Sprites and GIFs</a></li>
+    <li><a href="#scratch">From scratch with the generators</a></li>
+    <li><a href="#painting">Painting cell by cell</a></li>
+    <li><a href="#motion">Motion and live effects</a></li>
+    <li><a href="#too-big">"Too big" or "may stutter"</a></li>
+    <li><a href="#export">Export and install</a></li>
+    <li><a href="#save">Save, open, carry on</a></li>
+    <li><a href="#keys">The keyboard map</a></li>
+    <li><a href="#questions">Short questions</a></li>
+  </ol>
+</nav>
+
+<main>
+<header>
+  <h1>BackdropKit editor guide</h1>
+  <p>How to make a theme for the Claude Code desktop app, one task at a time. Each part is a few steps with the names of the buttons as the editor shows them.</p>
+  <p class="note">Point at any control in the editor to read what it does. Double-click a slider to reset it.</p>
+</header>
+
+<section id="basics">
+  <h2>1. Basics</h2>
+  <p>A theme is a pixel scene that plays behind your conversation in the app: a grid of 320 x 200 cells, one scene for each moment of the day (Day, Sunset, Night…), with motion on top. The editor builds it from layers and exports it ready to install.</p>
+  <h3>The four areas of the screen</h3>
+  <ol class="steps">
+    <li><span class="ui">Left panel</span>: the tools at the top, then <span class="ui">Layers</span>, then <span class="ui">Your art</span> (every picture you brought in).</li>
+    <li><span class="ui">Right panel</span>, the inspector: five tabs, <span class="ui">Layer</span>, <span class="ui">Look</span>, <span class="ui">Colour</span>, <span class="ui">Motion</span> and <span class="ui">Effects</span>, for the selected layer.</li>
+    <li><span class="ui">The day line</span> at the bottom: the time, the moment's name, <span class="ui">Play the day</span>, the check (for example <code>14,363 of 131,072 · ok</code>) and <span class="ui">Export</span>.</li>
+    <li><span class="ui">The top</span>: the menus (File, Edit, View, Help), the theme's name, <span class="ui">Guide</span>, <span class="ui">Show chat</span> and <span class="ui">Play</span>. <kbd>Tab</kbd> hides the panels to see the scene alone.</li>
+  </ol>
+  <h3>Layers</h3>
+  <ol class="steps">
+    <li>Layers stack: the top one in the list covers the ones below. Drag a row up or down to move it, or use its <span class="ui">•••</span> menu: <span class="ui">Move up</span>, <span class="ui">Move down</span>.</li>
+    <li>Click a layer to edit it in the inspector. Under each name the list says when it shows: <span class="ui">All day</span>, <span class="ui">Night only</span>, <span class="ui">Day, Sunset</span>.</li>
+    <li>The eye on a row hides the layer at every moment. Click it again to show it.</li>
+    <li>To show a layer at some moments only: <span class="ui">Layer</span> tab → <span class="ui">Shows at</span>, click a moment's chip to turn it off there. A star field at Night only, say.</li>
+  </ol>
+  <h3>The day line</h3>
+  <ol class="steps">
+    <li>Click or drag along the day line: the scene shows that time. <kbd>[</kbd> and <kbd>]</kbd> step to the previous and next moment.</li>
+    <li>The handles between two moments set when each one starts. Drag one; the hour shows as you drag.</li>
+    <li><span class="ui">Play the day</span> runs the whole day, an hour a second.</li>
+  </ol>
+</section>
+
+<section id="remix">
+  <h2>2. Remix one of the 14 themes</h2>
+  <ol class="steps">
+    <li>On the start, choose <span class="ui">One of the 14 themes</span> and pick one. (Later: File → <span class="ui">New…</span>.) <span class="see">It comes in as one Picture layer, held still, with its picture for each moment.</span></li>
+    <li>Click <span class="ui">+</span> next to <span class="ui">Layers</span> and choose <span class="ui">Clouds</span>. <span class="see">Clouds appear above the picture; the Layer tab has their Clouds, Size, Shape, Colour, Highest and Lowest, and New shapes.</span></li>
+    <li>Open the <span class="ui">Motion</span> tab and set <span class="ui">Moves by</span> to <span class="ui">Drift</span>. <span class="ui">One loop</span> is how many seconds a cloud takes to cross. Press <kbd>M</kbd> to see the motion in the editor.</li>
+    <li>For stars: <span class="ui">+</span> → <span class="ui">Stars</span>. <span class="see">They come in twinkling, shown at the night moments only.</span> Change that in <span class="ui">Shows at</span>.</li>
+    <li>Press <kbd>P</kbd> to play the scene exactly as the app will get it; <kbd>Esc</kbd> stops. Then <span class="ui">Export</span> (<a href="#export">part 12</a>).</li>
+  </ol>
+</section>
+
+<section id="one-picture">
+  <h2>3. One picture into a theme</h2>
+  <ol class="steps">
+    <li>On the start, choose <span class="ui">My own art</span> and pick one picture: PNG, JPEG, WebP or GIF. You can also drop it anywhere on the page, or paste it.</li>
+    <li><span class="see">The picture fills the scene the way the app fills a window, and the <span class="ui">Look</span> tab opens.</span> A look decides how the picture becomes cells. <span class="ui">Looks</span> shows ready-made ones on your own picture: Clean pixels, Soft dither, Night grain, Poster and more. Click one.</li>
+    <li>Below the looks, each section changes one part: <span class="ui">Background</span>, <span class="ui">Picture</span>, <span class="ui">Colours</span>, <span class="ui">Dither</span>, <span class="ui">Pixel shapes</span>, <span class="ui">Glyphs</span>, <span class="ui">Outline</span>, <span class="ui">Mirror</span>. Hold <kbd>\</kbd> (or <span class="ui">Hold to compare</span>) to see the original.</li>
+    <li>To take the background away: <span class="ui">Background</span> → <span class="ui">Take away</span>. <span class="ui">Auto</span> finds it by itself; <span class="ui">Colour</span> takes away a colour you pick (with <span class="ui">Tolerance</span> and <span class="ui">Soft edge</span>); <span class="ui">Dark</span> or <span class="ui">Light</span> takes away everything dark or light. <span class="see">What is taken away shows the layers below.</span></li>
+    <li>To place it: <span class="ui">Layer</span> tab → <span class="ui">Your art</span>: <span class="ui">Across</span>, <span class="ui">Down</span>, <span class="ui">Size</span>, and <span class="ui">Flip</span>, <span class="ui">Cover</span>, <span class="ui">Fit</span>. Or with the Move tool (<kbd>V</kbd>): drag it, pull a corner, or hold <kbd>Alt</kbd> and scroll over it.</li>
+    <li>Motion and effects: the <span class="ui">Motion</span> and <span class="ui">Effects</span> tabs (<a href="#motion">part 10</a>).</li>
+    <li>When the check on the day line says <span class="ui">ok</span>, <span class="ui">Export</span> (<a href="#export">part 12</a>).</li>
+  </ol>
+</section>
+
+<section id="day-and-night">
+  <h2>4. Day and night versions of one picture</h2>
+  <p>Two pictures of the same place, one by day and one by night, become one layer that switches picture with the time.</p>
+  <h3>From the start</h3>
+  <ol class="steps">
+    <li>Choose <span class="ui">My own art</span> and select both pictures at once (<kbd>Ctrl</kbd>-click, or <kbd>⌘</kbd>-click on a Mac).</li>
+    <li><span class="see">winch-ai asks whether they are the same scene at different times of day. Each picture has a moment under it, guessed from how bright it is: the brightest is Day, the darkest Night.</span></li>
+    <li>Click a moment to change it. Choosing a moment another picture has swaps the two.</li>
+    <li><span class="see">The line under them gives the hours. Two pictures make Day 06:00–18:00 and Night 18:00–06:00; three or four add Sunrise or Sunset in between.</span></li>
+    <li>Choose <span class="ui">Yes, one scene</span>. <span class="see">One layer holds both pictures, in the same place and with one look. The list shows it as <span class="ui">Day / Night · 2 pictures</span>.</span></li>
+    <li>Drag along the day line: at 18:00 the night picture takes over. Drag the handle between Day and Night to change that hour.</li>
+  </ol>
+  <p class="note"><span class="ui">No, separate pieces</span> makes one layer per picture instead, each shown all day.</p>
+  <h3>By hand, on a layer you already have</h3>
+  <ol class="steps">
+    <li>Select the picture's layer. In the <span class="ui">Layer</span> tab, under <span class="ui">Times of day</span>, click <span class="ui">Add a version for another time of day…</span> (it is also in the layer's <span class="ui">•••</span> menu).</li>
+    <li>Choose the moment, for example <span class="ui">For Night</span>, then the night picture.</li>
+    <li><span class="see">It goes in the same place with the same look and shows only at Night; the first picture stops showing there.</span> <span class="ui">Times of day</span> lists each picture with its moments; the <span class="ui">•••</span> on a row changes them or removes the version.</li>
+    <li>If the picture is already in <span class="ui">Your art</span>: go to that moment on the day line, right-click its thumbnail and choose <span class="ui">Show it in</span> the layer <span class="ui">at Night</span>.</li>
+  </ol>
+  <p class="note">One look covers all the pictures. To give each its own look, <span class="ui">Times of day</span> → <span class="ui">Split into layers</span>: each picture becomes a layer shown at its moments. Versions are still pictures (a GIF gives its first frame), and they keep their own colours, so <span class="ui">Light by the time of day</span> is off for them.</p>
+</section>
+
+<section id="more-times">
+  <h2>5. More times of day</h2>
+  <ol class="steps">
+    <li>Click <span class="ui">+ Moment</span> under the day line. <span class="see">A moment goes into the longest stretch of the day with a usual name (Sunrise, Evening…). Every colour is relit for it; your art keeps its colours.</span></li>
+    <li>To rename it, click the moment's name next to the time and choose <span class="ui">Rename</span>, or double-click its stretch of the day line.</li>
+    <li>Drag the handles on the day line to set when each moment starts. A theme has up to six.</li>
+    <li>To remove one, click its name and choose <span class="ui">Remove</span>.</li>
+    <li>One picture per moment: on the start, choose <span class="ui">My own art</span> with up to six pictures and give each its moment (Sunrise, Morning, Day, Sunset, Evening, Night). Or add a version for each moment by hand (<a href="#day-and-night">part 4</a>).</li>
+  </ol>
+</section>
+
+<section id="colours">
+  <h2>6. Colours that follow the time of day</h2>
+  <p>Every colour in the palette has its own shade at each moment. Generator layers (sky, hills, trees…) are lit by the sun layer at each moment by themselves.</p>
+  <ol class="steps">
+    <li>Your art keeps its own colours all day. To have it dim at night: <span class="ui">Layer</span> tab → <span class="ui">Your art</span> → <span class="ui">Light by the time of day</span>. <span class="see">It is taken as drawn by day: warmer at sunset, darker and bluer at night.</span></li>
+    <li><span class="ui">Colour</span> tab → <span class="ui">Colours at</span> the moment on show. Click a swatch: <span class="ui">Colour</span> lists its shade at every moment, and you can set any of them. <span class="ui">Relight from</span> this moment fills its other moments from this shade.</li>
+    <li><span class="ui">Relight</span>: choose the light each moment gets (dawn is pink, sunset warm, night blue and much darker), then <span class="ui">Relight every colour</span>. <span class="see">Every colour's other moments are filled from the moment on show. Generators keep their own.</span></li>
+    <li><span class="ui">Tidy</span>: <span class="ui">Merge similar</span> joins colours that look alike at every moment; <span class="ui">Remove unused</span> drops colours no layer uses.</li>
+  </ol>
+</section>
+
+<section id="sprites">
+  <h2>7. Sprites and GIFs</h2>
+  <ol class="steps">
+    <li>Drop a sprite (a PNG with a clear background) or a GIF on the page, or <span class="ui">+</span> → <span class="ui">Your art…</span>. <span class="see">A sprite stands in the lower middle at a fair size.</span></li>
+    <li>Move tool (<kbd>V</kbd>): drag it; pull a corner to size it; or hold <kbd>Alt</kbd> and scroll over it. The <span class="ui">Layer</span> tab has <span class="ui">Across</span>, <span class="ui">Down</span>, <span class="ui">Size</span> and <span class="ui">Flip</span> (<kbd>Shift+H</kbd>).</li>
+    <li>A GIF plays its frames. <span class="ui">Layer</span> tab → <span class="ui">Frames</span> → <span class="ui">Speed</span>, in frames per second (20 is the fastest the app plays). <kbd>,</kbd> and <kbd>.</kbd> step through the frames.</li>
+    <li>To send it across the scene: <span class="ui">Motion</span> → <span class="ui">Moves by</span> → <span class="ui">Drift</span>, then <span class="ui">Direction</span> and <span class="ui">One loop</span>. <span class="ui">Fall</span> drops it and brings it back on top; <span class="ui">Sway</span> and <span class="ui">Bob</span> rock it.</li>
+    <li>Several pictures at once go to <span class="ui">Your art</span> at the left: click one to add it as a layer.</li>
+  </ol>
+</section>
+
+<section id="scratch">
+  <h2>8. From scratch with the generators</h2>
+  <ol class="steps">
+    <li>On the start, choose <span class="ui">A blank scene</span>, then the moment to start in. <span class="see">A quiet valley: a sky, a sun and moon, mountains, hills, pines and clouds, each one a layer drawn by a generator.</span></li>
+    <li>Select a layer; its settings are in the <span class="ui">Layer</span> tab. Sky: <span class="ui">Colours</span>, <span class="ui">Bands</span>, <span class="ui">Horizon</span>, <span class="ui">Dither</span>. Ridges and hills: <span class="ui">Shape</span>, <span class="ui">Foot</span>, <span class="ui">Height</span>, <span class="ui">Rough</span>, <span class="ui">Distance</span>, <span class="ui">Colour by day</span>, <span class="ui">Snow</span>. The <span class="ui">New …</span> button draws new shapes with the same settings.</li>
+    <li>Sun and moon: <span class="ui">Across</span> and <span class="ui">Height</span> are set for the moment on show. <span class="see">Hills, clouds and water take their light from it.</span></li>
+    <li><span class="ui">+</span> adds more: Sky, Sun and moon, Stars, Clouds, Ridges and hills, Trees, Water.</li>
+    <li>To paint on a generated layer: <span class="ui">To paint</span> in the Layer tab. Its generator stops there.</li>
+  </ol>
+</section>
+
+<section id="painting">
+  <h2>9. Painting cell by cell</h2>
+  <ol class="steps">
+    <li><span class="ui">+</span> → <span class="ui">Paint</span> adds a paint layer and picks the Pencil.</li>
+    <li>The tools at the top left: Move <kbd>V</kbd>, Pencil <kbd>B</kbd>, Eraser <kbd>E</kbd>, Fill <kbd>G</kbd>, Line <kbd>L</kbd> (<kbd>Shift</kbd>: level or 45°), Rectangle <kbd>R</kbd> (<kbd>Shift</kbd>: filled), Pick colour <kbd>I</kbd> (or hold <kbd>Alt</kbd> with any tool). <kbd>1</kbd> <kbd>2</kbd> <kbd>3</kbd> set the brush size.</li>
+    <li>Choose the colour in the <span class="ui">Colour</span> tab, or <kbd>Alt</kbd>-click it in the scene. <span class="see">A colour has its own shade at each moment, so one stroke looks right all day.</span></li>
+    <li>On a layer with a picture for each moment (a theme's picture, say): <span class="ui">Paint every moment at once</span> on, a stroke goes to all of them; off, only to the moment on show.</li>
+    <li>Undo <kbd>Ctrl+Z</kbd> (<kbd>⌘Z</kbd>), redo <kbd>Ctrl+Y</kbd> (<kbd>⇧⌘Z</kbd>). Zoom with <kbd>+</kbd> and <kbd>−</kbd>, <kbd>F</kbd> fits the scene, hold <kbd>Space</kbd> to pan. View → <span class="ui">Cell grid when close</span> shows the cells when zoomed in.</li>
+  </ol>
+</section>
+
+<section id="motion">
+  <h2>10. Motion and live effects</h2>
+  <h3>Motion: the Motion tab, Moves by</h3>
+  <ul>
+    <li><span class="ui">Drift</span>: slides the layer across and around, wrapping at the edge. Clouds. <span class="ui">One loop</span> (20 to 600 s) and <span class="ui">Direction</span>.</li>
+    <li><span class="ui">Fall</span>: drops it and brings it back on top. Snow, rain. <span class="ui">One loop</span>.</li>
+    <li><span class="ui">Sway</span> and <span class="ui">Bob</span>: rock it side to side or up and down by 1 to 3 cells. Grass, a boat. <span class="ui">Period</span>, <span class="ui">Amount</span>.</li>
+    <li><span class="ui">Twinkle</span>: fades parts of it in turn. Stars, glints on water.</li>
+  </ul>
+  <h3>Live effects: the Effects tab</h3>
+  <ul>
+    <li><span class="ui">Colour cycle</span>: the layer's colours step through each other in order. Water, neon, fire.</li>
+    <li><span class="ui">Pulse</span>: the layer breathes, its opacity easing down and back. Lights, glow.</li>
+    <li><span class="ui">Glint</span>: a narrow band of light sweeps across now and then. Not on a layer with frames, and the layer must be at least three cells thick.</li>
+  </ul>
+  <h3>What they cost</h3>
+  <p>The app's player draws every moving layer again on every frame, and motion and effects add a little to the scene's size. A few small moving layers cost little; a large layer that moves costs the most. Click the check on the day line to see each moment and the layers that cost the most there.</p>
+  <p class="note"><kbd>M</kbd> previews motion in the editor; <kbd>P</kbd> plays the real exported scene. The app plays motion only with the GPU on and reduced motion off; otherwise it shows a still frame.</p>
+</section>
+
+<section id="too-big">
+  <h2>11. "Too big" or "may stutter"</h2>
+  <p>The check on the day line reads, for example, <code>14,363 of 131,072 · ok</code>: the largest moment, in characters, of the most the app's player accepts in one scene.</p>
+  <ul>
+    <li><span class="ui">Too big</span>: a moment is over 131,072 characters. The exporter first merges near colours (up to 6 levels on a channel) and says so; if it is still over, it cannot export.</li>
+    <li><span class="ui">May stutter</span>: the check estimates the time the app needs to draw each frame. Over 2.78 ms it warns ("It may stutter on slower computers"); over 5.56 ms it is an error.</li>
+  </ul>
+  <p>Click the check: every moment has a meter and its three costliest layers. Click a layer's name to select it.</p>
+  <ol class="steps">
+    <li><span class="ui">Make it fit</span> (Look tab, on art that takes much of a scene): simplifies the look a step at a time until the art takes at most 60% of a scene, or what the other layers leave. <span class="see">A lighter dither, a smoother picture, fewer colours.</span> Undo brings it back.</li>
+    <li>Fewer colours: <span class="ui">Look</span> → <span class="ui">Colours</span> → <span class="ui">Colours</span> lower, or <span class="ui">Colour</span> tab → <span class="ui">Merge similar</span>.</li>
+    <li>Smaller art: a lower <span class="ui">Size</span>, or <span class="ui">Background</span> → <span class="ui">Take away</span> so less is drawn. Flat areas and ordered patterns cost less than diffusion: the <span class="ui">Dither</span> → <span class="ui">Pattern</span> list marks each one cheap, medium or costly.</li>
+    <li>Fewer moving layers: set <span class="ui">Moves by</span> to <span class="ui">None</span> on the ones that matter least, or hide a layer at the moments it is not needed (<span class="ui">Shows at</span>).</li>
+  </ol>
+</section>
+
+<section id="export">
+  <h2>12. Export and install</h2>
+  <ol class="steps">
+    <li>Click <span class="ui">Export</span> on the day line (or <kbd>Ctrl+E</kbd>, <kbd>⌘E</kbd>). winch-ai asks for the <span class="ui">Name</span>, the <span class="ui">Folder name</span> (small letters, numbers and dashes; the theme installs under it) and a <span class="ui">Line</span> about it. Click <span class="ui">Export</span>.</li>
+    <li><span class="see">It encodes every moment, measures the light of each, takes the preview and packs the archive.</span> The archive, named after the folder (<code>my-theme.zip</code>), goes to your downloads.</li>
+    <li>Inside: <code>.claude-plugin/marketplace.json</code>, <code>mod/.claude-plugin/plugin.json</code>, <code>mod/hooks/</code> (the theme mod), <code>preview.png</code>, <code>project.json</code> and <code>README.md</code>.</li>
+    <li>Click <span class="ui">Copy</span> on the <span class="ui">Install prompt</span> and give it to Claude Code in the app, with the archive in your downloads. <span class="see">It lists what is inside, reads the mod, unpacks it into <code>~/.claude/backdropkit/my-theme</code> and runs:</span>
+<pre>claude plugin marketplace add "&lt;that folder&gt;"
+claude plugin install my-theme@backdropkit-my-theme --scope user</pre>
+      Then run <code>/reload-plugins</code> or start a new session.</li>
+    <li>The theme's own commands, as its README lists them (with your folder name in place of <code>my-theme</code>):
+      <ul>
+        <li><code>/my-theme-time</code> lists when each scene plays. <code>/my-theme-time night</code> (another moment, or a time like 18:30) previews it and runs on from it; <code>/my-theme-time now</code> goes back to your clock.</li>
+        <li><code>/my-theme-off</code> takes the theme off, in new sessions too; <code>/my-theme-on</code> puts it back.</li>
+        <li>To remove it: <code>claude plugin uninstall my-theme@backdropkit-my-theme</code>.</li>
+      </ul>
+    </li>
+    <li>To update a theme: open its project (<a href="#save">part 13</a>), change it, export again with the same folder name and give Claude Code the new install prompt. <span class="see">It replaces the older copy in the same folder.</span> Then <code>/reload-plugins</code>.</li>
+  </ol>
+  <p class="note">The README in the archive also says how to install by hand. If another theme plugin is on, the theme set last wins.</p>
+</section>
+
+<section id="save">
+  <h2>13. Save, open, carry on</h2>
+  <ol class="steps">
+    <li>As you work, the editor keeps the project in this browser. <span class="see"><span class="ui">Saved</span> shows next to the name.</span> Reload the page and it comes back.</li>
+    <li>File → <span class="ui">Save project</span> (<kbd>Ctrl+S</kbd>, <kbd>⌘S</kbd>) downloads <code>my-theme.project.json</code>: your art, layers, colours and moments.</li>
+    <li>File → <span class="ui">Open project…</span> (<kbd>Ctrl+O</kbd>, <kbd>⌘O</kbd>), or <span class="ui">Open a project</span> on the start, opens a <code>project.json</code> or a theme archive made here.</li>
+    <li>File → <span class="ui">New…</span> shows the start; <span class="ui">Back to</span> your theme returns to it.</li>
+  </ol>
+  <p class="note">The browser keeps one project. Save a file for each theme you want to keep.</p>
+</section>
+
+<section id="keys">
+  <h2>14. The keyboard map</h2>
+  <p>Press <kbd>?</kbd> in the editor to see it there. On a Mac, <kbd>⌘</kbd> takes the place of <kbd>Ctrl</kbd>.</p>
+  <div class="keys">
+    <div>
+      <h3>Tools</h3>
+      <dl>
+        <dt><kbd>V</kbd></dt><dd>Move: drag art or paint, pull a corner to size</dd>
+        <dt><kbd>B</kbd></dt><dd>Pencil</dd>
+        <dt><kbd>E</kbd></dt><dd>Eraser</dd>
+        <dt><kbd>G</kbd></dt><dd>Fill</dd>
+        <dt><kbd>L</kbd></dt><dd>Line</dd>
+        <dt><kbd>R</kbd></dt><dd>Rectangle</dd>
+        <dt><kbd>I</kbd></dt><dd>Pick colour (or hold Alt)</dd>
+        <dt><kbd>1 2 3</kbd></dt><dd>Brush size</dd>
+      </dl>
+    </div>
+    <div>
+      <h3>Edit</h3>
+      <dl>
+        <dt><kbd>Ctrl+Z</kbd></dt><dd>Undo</dd>
+        <dt><kbd>Ctrl+Y</kbd></dt><dd>Redo (<kbd>⇧⌘Z</kbd> on a Mac)</dd>
+        <dt><kbd>Ctrl+D</kbd></dt><dd>Duplicate layer</dd>
+        <dt><kbd>Del</kbd></dt><dd>Delete layer</dd>
+        <dt><kbd>Shift+H</kbd></dt><dd>Flip your art</dd>
+        <dt><kbd>\ (hold)</kbd></dt><dd>Compare with the original art</dd>
+        <dt><kbd>/</kbd></dt><dd>Search every setting</dd>
+      </dl>
+    </div>
+    <div>
+      <h3>View</h3>
+      <dl>
+        <dt><kbd>F</kbd></dt><dd>Fit</dd>
+        <dt><kbd>0</kbd></dt><dd>Fill, as the app</dd>
+        <dt><kbd>+ −</kbd></dt><dd>Zoom</dd>
+        <dt><kbd>Space (hold)</kbd></dt><dd>Pan</dd>
+        <dt><kbd>Alt + scroll</kbd></dt><dd>Size your art</dd>
+        <dt><kbd>Tab</kbd></dt><dd>Panels</dd>
+        <dt><kbd>C</kbd></dt><dd>Show chat</dd>
+        <dt><kbd>?</kbd></dt><dd>The keyboard map</dd>
+      </dl>
+    </div>
+    <div>
+      <h3>Time</h3>
+      <dl>
+        <dt><kbd>[ ]</kbd></dt><dd>Previous, next moment</dd>
+        <dt><kbd>, .</kbd></dt><dd>Previous, next frame</dd>
+        <dt><kbd>M</kbd></dt><dd>Preview motion</dd>
+        <dt><kbd>P</kbd></dt><dd>Play the scene</dd>
+        <dt><kbd>Shift+P</kbd></dt><dd>Play the day</dd>
+      </dl>
+    </div>
+    <div>
+      <h3>File</h3>
+      <dl>
+        <dt><kbd>Ctrl+S</kbd></dt><dd>Save project</dd>
+        <dt><kbd>Ctrl+O</kbd></dt><dd>Open project</dd>
+        <dt><kbd>Ctrl+E</kbd></dt><dd>Export theme</dd>
+      </dl>
+    </div>
+  </div>
+</section>
+
+<section id="questions">
+  <h2>15. Short questions</h2>
+  <dl class="qa">
+    <dt>Why does everything become pixels?</dt>
+    <dd>The app plays pixel scenes only. A scene is 320 x 200 cells, each one colour, and the app's player takes at most 131,072 characters of it. Your art becomes cells; the look decides how.</dd>
+    <dt>Why do my colours shift?</dt>
+    <dd>Each colour has a shade for every moment. Generators and relit colours get warmer at sunset and darker and bluer at night. Your art keeps its own colours unless <span class="ui">Light by the time of day</span> is on. Merging near colours (Merge similar, Make it fit, or the exporter fitting a large scene) can also nudge them a little.</dd>
+    <dt>Can I share a theme?</dt>
+    <dd>Yes. The archive is the whole theme: anyone can install it with its install prompt, and its <code>project.json</code> opens in the editor to change it. Share only art you are free to share.</dd>
+    <dt>Why do the editor's panels stay dark when the scene is bright?</dt>
+    <dd>The panels keep one tone while you work, dark by default, so they do not flip as you move along the day. View → <span class="ui">Panels</span>: <span class="ui">Dark</span>, <span class="ui">Light</span>, or <span class="ui">Follow the scene</span> (light panels over a light scene and dark over a dark one, as the app does with an installed theme).</dd>
+    <dt>Where is my work?</dt>
+    <dd>In this browser, on your computer. Nothing is uploaded. Save a project file to keep a copy.</dd>
+  </dl>
+</section>
+
+<footer>BackdropKit editor guide. Community project, not affiliated with Anthropic.</footer>
+</main>
+</div>
+</body>
+</html>

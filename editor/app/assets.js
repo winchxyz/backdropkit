@@ -68,11 +68,36 @@ export function defaultPlace(asset, bmp) {
   return { x: Math.round((W - w * s) / 2), y: Math.round(H - h * s - H * 0.08), scale: round3(s), flipX: false }
 }
 const round3 = v => Math.round(v * 1000) / 1000
-export const boxOf = (layer, doc = S.doc) => {
-  const a = doc.assets?.[layer.asset]
-  const p = layer.place
+export const boxOf = (layer, doc = S.doc, mid = S.mid) => {
+  const id = assetAt(layer, mid, doc)
+  const a = doc.assets?.[id]
+  const p = placeOf(layer, id, doc)
   if (!a || !p) return null
   return { x: p.x, y: p.y, w: a.w * p.scale, h: a.h * p.scale }
+}
+
+/* ---------- Versions: one picture per time of day ---------- */
+
+// An image layer may hold other pictures of the same scene for some moments
+// (`versions: { momentId: assetId }`, editor-only). The picture shown at a moment is its
+// version there, else the layer's own (`asset`). All of them share the look and the place.
+export const assetAt = (l, mid = S.mid, doc = S.doc) => {
+  const v = l?.versions?.[mid]
+  return v && doc.assets?.[v] ? v : l?.asset
+}
+// Every picture the layer shows, its own first.
+export const assetsOf = (l, doc = S.doc) => [...new Set([l.asset, ...doc.moments.map(m => assetAt(l, m.id, doc))])].filter(id => id && doc.assets?.[id])
+export const hasVersions = (l, doc = S.doc) => !!l?.versions && assetsOf(l, doc).length > 1
+// The moments a picture of the layer shows at.
+export const momentsOf = (l, assetId, doc = S.doc) => doc.moments.filter(m => assetAt(l, m.id, doc) === assetId).map(m => m.id)
+// Where a version sits: as wide as the layer's own picture, standing on the same foot.
+export function placeOf(l, assetId = l.asset, doc = S.doc, place = l.place) {
+  if (!place || assetId === l.asset) return place
+  const base = doc.assets?.[l.asset]
+  const a = doc.assets?.[assetId]
+  if (!base || !a) return place
+  const s = round3((place.scale * base.w) / a.w)
+  return { ...place, scale: s, y: Math.round(place.y + base.h * place.scale - a.h * s) }
 }
 
 const scratch = new OffscreenCanvas(W, H)
@@ -104,13 +129,52 @@ const projectColors = (doc, mid) => {
 // Runs the look on every frame of an image layer in a draft and gives it cells and slots.
 // The bitmaps must be loaded (await loaded()) before.
 export function bake(d, l, mid = S.mid) {
+  if (hasVersions(l, d)) return bakeVersions(d, l)
   const bmps = bitmapsNow(l.asset)
   if (!bmps || !bmps.length) return false
   const look = fullLook(l.look)
   const pal = projectColors(d, mid)
   // One palette for every frame, so animated art does not flicker.
   const r = applyLookFrames(bmps.map(b => placed(b, l.place)), look, { palette: pal })
-  writeResults(d, l, r.frames.map(cells => ({ cells, colors: r.colors })), mid)
+  writeResults(d, l, r.frames.map(cells => ({ cells, colors: r.colors })))
+  return true
+}
+
+// A layer with versions: each picture through the same look, its cells written for the
+// moments it shows at (byMoment). Slot k takes, at each moment, the k-th colour (darkest
+// first) of the picture shown then, so the palette swaps with the picture. Versions are
+// stills: an animated picture gives its first frame.
+function bakeVersions(d, l) {
+  const look = fullLook(l.look)
+  const res = new Map()
+  for (const id of assetsOf(l, d)) {
+    const bmp = bitmapsNow(id)?.[0]
+    if (!bmp) return false
+    const first = momentsOf(l, id, d)[0] || d.moments[0].id
+    res.set(id, applyLook(placed(bmp, placeOf(l, id, d)), look, { palette: projectColors(d, first) }))
+  }
+  const n = Math.max(0, ...[...res.values()].map(r => r.colors.length))
+  const wants = []
+  for (let k = 0; k < n; k++) {
+    const colors = {}
+    for (const m of d.moments) {
+      const c = res.get(assetAt(l, m.id, d)).colors
+      colors[m.id] = c[Math.min(k, c.length - 1)] || '#000000'
+    }
+    wants.push(colors)
+  }
+  assignSlots(d, l, wants, slots => {
+    const byMoment = {}
+    for (const m of d.moments) {
+      const r = res.get(assetAt(l, m.id, d))
+      byMoment[m.id] = mapCells(r.cells, slots.slice(0, r.colors.length))
+    }
+    l.byMoment = byMoment
+    const own = momentsOf(l, l.asset, d)[0] || d.moments[0].id
+    l.cells = byMoment[own].slice()
+    delete l.frames
+    delete l.anim
+  })
   return true
 }
 
@@ -124,12 +188,31 @@ export function artColors(d, l, hex) {
 const sameColors = (a, b, mids) => mids.every(id => (a[id] || '').toLowerCase() === (b[id] || '').toLowerCase())
 
 // Gives colours slots and writes the cells (frames when there are several).
-function writeResults(d, l, results, mid) {
+function writeResults(d, l, results) {
+  const want = [...new Set(results.flatMap(r => r.colors))]
+  assignSlots(d, l, want.map(hex => artColors(d, l, hex)), slots => {
+    const slotOf = new Map(want.map((hex, k) => [hex, slots[k]]))
+    const frames = results.map(r => mapCells(r.cells, r.colors.map(c => slotOf.get(c))))
+    l.cells = frames[0]
+    l.byMoment = null
+    if (frames.length > 1) {
+      l.frames = frames
+      l.anim = l.anim || { fps: fpsOf(d.assets[l.asset]) }
+    } else {
+      delete l.frames
+      delete l.anim
+    }
+  })
+}
+
+// Gives each wanted set of colours ({ momentId: hex }) a slot, then write(slots) writes the
+// cells (a slot is 0 when the palette is full). A slot already in the palette (not the
+// layer's own) with the very colours at every moment is shared; the layer's own slots are
+// reused; own slots no longer needed (and used by nothing else) go once the cells are in.
+function assignSlots(d, l, wants, write) {
   const mids = d.moments.map(m => m.id)
   const own = new Set(l.own || [])
   const others = slotUsage(d, l.id)
-  // Slots already in the palette (not the layer's own) with the very colours wanted at every
-  // moment are shared.
   const byKey = new Map()
   for (let s = 1; s <= d.palette.length; s++) {
     if (own.has(s)) continue
@@ -139,11 +222,7 @@ function writeResults(d, l, results, mid) {
   // Own slots another layer also uses now (after a merge, say) are not recoloured.
   const free = [...own].filter(s => !others[s])
   const keep = new Set()
-  const slotOf = new Map()
-  const want = new Set()
-  for (const r of results) for (const c of r.colors) want.add(c)
-  for (const hex of want) {
-    const colors = artColors(d, l, hex)
+  const slots = wants.map(colors => {
     let s = byKey.get(mids.map(id => colors[id]).join())
     if (!s) {
       // An own slot that already has these colours keeps them; otherwise a free one is reused.
@@ -153,30 +232,20 @@ function writeResults(d, l, results, mid) {
       else if (d.palette.length < MAX_SLOTS) s = addSlot(d, colors)
       if (s) keep.add(s)
     }
-    slotOf.set(hex, s || 0)
-  }
-  void mid
-  const map = r => {
-    const m = new Uint16Array(r.colors.length + 1)
-    r.colors.forEach((c, k) => (m[k + 1] = slotOf.get(c) || 0))
-    const out = new Uint16Array(N)
-    for (let i = 0; i < N; i++) out[i] = m[r.cells[i]]
-    return out
-  }
-  const frames = results.map(map)
-  l.cells = frames[0]
-  l.byMoment = null
-  if (frames.length > 1) {
-    l.frames = frames
-    l.anim = l.anim || { fps: fpsOf(d.assets[l.asset]) }
-  } else {
-    delete l.frames
-    delete l.anim
-  }
+    return s || 0
+  })
+  write(slots)
   l.own = [...keep]
-  // Own slots no longer needed (and used by nothing else) go.
   const drop = new Set([...own].filter(s => !keep.has(s) && !others[s]))
   if (drop.size) removeSlots(d, drop)
+}
+// Cells numbered 1..n by a look into palette slots (slots[k] for colour k + 1).
+function mapCells(cells, slots) {
+  const m = new Uint16Array(slots.length + 1)
+  slots.forEach((s, k) => (m[k + 1] = s || 0))
+  const out = new Uint16Array(N)
+  for (let i = 0; i < N; i++) out[i] = m[cells[i]] || 0
+  return out
 }
 // The asset's own pace, from its frame delays.
 export function fpsOf(a) {
@@ -217,15 +286,18 @@ export async function importFiles(files, { onStep } = {}) {
   return { ids, failed }
 }
 
-// A new image layer from an asset, above the selected layer (or on top).
-export async function addImageLayer(assetId, { name, place, look, at } = {}) {
+// A new image layer from an asset, above the selected layer (or on top). `versions`
+// ({ momentId: assetId }) gives it other pictures of the same scene for some moments.
+export async function addImageLayer(assetId, { name, place, look, at, versions } = {}) {
   const a = S.doc.assets?.[assetId]
   if (!a) return null
   const bmps = await loaded(assetId)
+  if (versions) await Promise.all(Object.values(versions).map(v => loaded(v)))
   let id = null
   change('Add ' + (name || a.name), d => {
     const l = newLayer(d, 'image', name || cleanName(a.name))
     l.asset = assetId
+    if (versions && Object.keys(versions).length) l.versions = { ...versions }
     l.place = place || defaultPlace(a, bmps[0])
     l.look = look ? fullLook(look) : defaultLook()
     l.live = []
@@ -245,24 +317,102 @@ export const cleanName = n => String(n || KIND_LABEL.image).replace(/\.[a-z0-9]+
 export async function rebake(id, label, patch, key) {
   const l = getLayer(id)
   if (!l || !l.asset) return false
-  await loaded(l.asset)
+  await Promise.all(assetsOf({ ...l, ...patch }).map(a => loaded(a)))
   return change(label, d => {
     const dl = d.layers.find(x => x.id === id)
     Object.assign(dl, patch)
+    for (const [k, v] of Object.entries(patch)) if (v === undefined) delete dl[k]
     if (!bake(d, dl)) return false
   }, key)
 }
 export const setLook = (id, look, key) => rebake(id, 'Change the look', { look: fullLook(look) }, key)
 // The look taken down step by step until the art costs at most `budget` characters (all its
-// frames together). Returns { steps, fits, cost }, steps naming what changed, or null.
+// frames together; with versions, the costliest picture, as one shows at a time). Returns
+// { steps, fits, cost }, steps naming what changed, or null.
 export async function fitArt(id, budget) {
   const l = getLayer(id)
   if (!l?.asset || !canFit()) return null
-  const bmps = await loaded(l.asset)
-  const r = fitLook(bmps.map(b => placed(b, l.place)), l.look, { budget, palette: projectColors(S.doc, S.mid) })
+  let r = null
+  if (hasVersions(l)) {
+    for (const a of assetsOf(l)) {
+      const bmp = (await loaded(a))[0]
+      const one = fitLook([placed(bmp, placeOf(l, a))], l.look, { budget, palette: projectColors(S.doc, momentsOf(l, a)[0] || S.mid) })
+      if (one && (!r || one.steps.length > r.steps.length || (!one.fits && one.cost > r.cost))) r = one
+    }
+  } else {
+    const bmps = await loaded(l.asset)
+    r = fitLook(bmps.map(b => placed(b, l.place)), l.look, { budget, palette: projectColors(S.doc, S.mid) })
+  }
   if (!r) return null
   if (r.steps.length) await rebake(id, 'Make the art fit', { look: r.look })
   return { steps: r.steps, fits: r.fits, cost: r.cost }
+}
+
+/* ---------- Versions ---------- */
+
+// Shows `assetId` at moment `mid` (the layer's own picture when assetId is its asset or null).
+// If the layer's own picture is left with no moment, the first version takes its place.
+export async function setVersionAt(id, mid, assetId, label = 'Change a time-of-day version') {
+  const l = getLayer(id)
+  if (!l?.asset) return false
+  const versions = { ...(l.versions || {}) }
+  if (!assetId || assetId === l.asset) delete versions[mid]
+  else versions[mid] = assetId
+  return rebake(id, label, tidyVersions(l, versions))
+}
+// A new picture for one moment of the layer: file in, shown at `mid` only.
+export async function addVersion(id, file, mid) {
+  const { ids, failed } = await importFiles([file])
+  if (!ids.length) return { failed }
+  await setVersionAt(id, mid, ids[0], 'Add a version for ' + (S.doc.moments.find(m => m.id === mid)?.name || mid))
+  return { ids, failed }
+}
+// The layer stops using a version; its moments go back to the layer's own picture.
+export function removeVersion(id, assetId) {
+  const l = getLayer(id)
+  if (!l?.versions) return false
+  const versions = Object.fromEntries(Object.entries(l.versions).filter(([, a]) => a !== assetId))
+  return rebake(id, 'Remove a version', tidyVersions(l, versions))
+}
+// The patch for a layer's versions: none left drops the field; when the layer's own picture
+// shows at no moment, the picture of the first moment becomes its own (placed the same).
+export function tidyVersions(l, versions, doc = S.doc) {
+  const mids = doc.moments.map(m => m.id)
+  for (const k of Object.keys(versions)) if (!mids.includes(k) || !doc.assets?.[versions[k]] || versions[k] === l.asset) delete versions[k]
+  let asset = l.asset
+  let place = l.place
+  if (mids.every(m => versions[m])) {
+    asset = versions[mids[0]]
+    place = placeOf(l, asset, doc)
+    for (const k of Object.keys(versions)) if (versions[k] === asset) delete versions[k]
+  }
+  return { asset, place, versions: Object.keys(versions).length ? versions : undefined }
+}
+// Each picture becomes an image layer of its own, shown at its moments only, so each can
+// have its own look. The layer keeps its own picture.
+export async function splitVersions(id) {
+  const l = getLayer(id)
+  if (!hasVersions(l)) return false
+  await Promise.all(assetsOf(l).map(a => loaded(a)))
+  return change('Split into layers', d => {
+    const i = d.layers.findIndex(x => x.id === id)
+    const src = d.layers[i]
+    const mids = d.moments.map(m => m.id)
+    const add = []
+    for (const a of assetsOf(src, d)) {
+      if (a === src.asset) continue
+      const at = momentsOf(src, a, d)
+      const nl = { ...newLayer(d, 'image', cleanName(d.assets[a].name)), asset: a, place: placeOf(src, a, d), look: fullLook(src.look), live: (src.live || []).map(e => ({ ...e })), motion: { ...src.motion } }
+      nl.id = newId([...d.layers, ...add], 'l')
+      nl.show = Object.fromEntries(mids.filter(m => !at.includes(m) || src.show?.[m] === false).map(m => [m, false]))
+      add.push(nl)
+    }
+    const own = momentsOf(src, src.asset, d)
+    src.show = Object.fromEntries(mids.filter(m => !own.includes(m) || src.show?.[m] === false).map(m => [m, false]))
+    delete src.versions
+    d.layers.splice(i + 1, 0, ...add)
+    for (const x of [src, ...add]) bake(d, x)
+  })
 }
 export const setLit = (id, on) => rebake(id, on ? 'Light the art by the time of day' : 'Keep the art\'s own colours', { lit: !!on })
 export const setPlace = (id, place, key) => rebake(id, 'Move the art', { place: { ...getLayer(id).place, ...place } }, key)
@@ -271,14 +421,17 @@ export async function replaceAsset(id, assetId) {
   const l = getLayer(id)
   if (!a || !l) return false
   const bmps = await loaded(assetId)
-  const keepBox = boxOf(l)
+  // The layer's own picture is replaced (its versions stay).
+  const was = S.doc.assets?.[l.asset]
+  const keepBox = was && l.place ? { x: l.place.x, y: l.place.y, w: was.w * l.place.scale, h: was.h * l.place.scale } : null
   let place = defaultPlace(a, bmps[0])
   if (keepBox) {
     // Same height and foot as the art it replaces.
     const s = keepBox.h / a.h
     place = { x: Math.round(keepBox.x + (keepBox.w - a.w * s) / 2), y: Math.round(keepBox.y), scale: round3(s), flipX: l.place?.flipX || false }
   }
-  return rebake(id, 'Replace the art', { asset: assetId, place, anim: undefined })
+  const patch = { asset: assetId, place, anim: undefined }
+  return rebake(id, 'Replace the art', l.versions ? { ...patch, ...tidyVersions({ ...l, ...patch }, { ...l.versions }) } : patch)
 }
 export function setFps(id, fps, key) {
   return change('Change the speed', d => {
@@ -287,14 +440,32 @@ export function setFps(id, fps, key) {
     dl.anim = { fps: clamp(Math.round(fps), 1, 20) }
   }, key)
 }
+export const assetUsers = assetId => S.doc.layers.filter(l => l.asset === assetId || Object.values(l.versions || {}).includes(assetId))
 export function removeAsset(assetId) {
-  if (S.doc.layers.some(l => l.asset === assetId)) return false
+  if (assetUsers(assetId).length) return false
   return change('Remove art', d => {
     d.assets = { ...d.assets }
     delete d.assets[assetId]
   })
 }
-export const assetUsers = assetId => S.doc.layers.filter(l => l.asset === assetId)
+
+// How bright a picture is on average (0 dark .. 1 light), over its opaque pixels.
+export async function assetLuma(assetId) {
+  const bmp = (await loaded(assetId))[0]
+  if (!bmp) return 0.5
+  const c = new OffscreenCanvas(48, 30)
+  const x = c.getContext('2d', { willReadFrequently: true })
+  x.drawImage(bmp, 0, 0, c.width, c.height)
+  const d = x.getImageData(0, 0, c.width, c.height).data
+  let t = 0
+  let n = 0
+  for (let i = 0; i < d.length; i += 4) {
+    if (d[i + 3] < 128) continue
+    t += (0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2]) / 255
+    n++
+  }
+  return n ? t / n : 0.5
+}
 
 // Loads every asset's bitmaps (after opening a project), quietly.
 export async function warmAll(doc = S.doc) {
@@ -312,9 +483,11 @@ const packHex = hex => {
 
 // The layer as a look would draw it, in packed pixels (0 = clear), for live previews.
 export function previewPx(l, { look = l.look, place = l.place, frame = 0 } = {}, mid = S.mid) {
-  const bmps = bitmapsNow(l.asset)
+  const id = assetAt(l, mid)
+  const bmps = bitmapsNow(id)
   if (!bmps?.length) return null
-  const rgba = placed(bmps[frame % bmps.length], place)
+  // A version is a still; it sits where the layer's place puts it.
+  const rgba = placed(id === l.asset ? bmps[frame % bmps.length] : bmps[0], placeOf(l, id, S.doc, place))
   const r = applyLook(rgba, fullLook(look), { palette: projectColors(S.doc, mid) })
   const cols = r.colors.map(packHex)
   const px = new Uint32Array(N)
@@ -323,9 +496,10 @@ export function previewPx(l, { look = l.look, place = l.place, frame = 0 } = {},
 }
 // The art itself, placed, before any look: "hold to compare".
 export function originalPx(l, frame = 0) {
-  const bmps = bitmapsNow(l.asset)
+  const id = assetAt(l)
+  const bmps = bitmapsNow(id)
   if (!bmps?.length) return null
-  const d = placed(bmps[frame % bmps.length], l.place).data
+  const d = placed(id === l.asset ? bmps[frame % bmps.length] : bmps[0], placeOf(l, id)).data
   const px = new Uint32Array(N)
   for (let i = 0; i < N; i++) if (d[i * 4 + 3] >= 128) px[i] = pack(d[i * 4], d[i * 4 + 1], d[i * 4 + 2])
   return px

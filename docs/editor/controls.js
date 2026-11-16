@@ -51,8 +51,25 @@ export function seg({ label, help, choices, value, find, onChange, wide }) {
   )
   const setOn = v => buttons.forEach((b, i) => b.setAttribute('aria-pressed', String(choices[i][0] === v)))
   const many = wide || choices.length > 5 || choices.reduce((n, c) => n + String(c[1]).length, 0) > 28
-  return h('div.ctl', { 'data-help': help || '', 'data-find': find || label }, label ? h('div.crow', null, h('label.cl', null, label)) : null, h('div.segs' + (many ? '.wrap' : ''), { role: 'group', 'aria-label': label }, buttons))
+  const box = h('div.segs' + (many ? '.wrap' : ''), { role: 'group', 'aria-label': label }, buttons)
+  // Once it is on the page: a row while it fits, otherwise a grid of 3, 2 or 1 columns, so
+  // no choice is ever cut (fonts, scrollbars and panel widths vary).
+  requestAnimationFrame(() => fitSegs(box))
+  return h('div.ctl', { 'data-help': help || '', 'data-find': find || label }, label ? h('div.crow', null, h('label.cl', null, label)) : null, box)
 }
+export function fitSegs(box) {
+  if (!box.isConnected) return
+  const cut = () => box.scrollWidth > box.clientWidth + 1 || [...box.children].some(b => b.scrollWidth > b.clientWidth + 1)
+  box.classList.remove('wrap')
+  box.style.removeProperty('--cols')
+  if (!cut()) return
+  for (const cols of [3, 2, 1]) {
+    box.classList.add('wrap')
+    box.style.setProperty('--cols', cols)
+    if (!cut()) return
+  }
+}
+addEventListener('resize', () => requestAnimationFrame(() => document.querySelectorAll('.segs').forEach(fitSegs)))
 
 // A dropdown, for long lists.
 export function select({ label, help, choices, value, find, onChange }) {

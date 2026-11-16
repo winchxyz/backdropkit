@@ -9,10 +9,10 @@ import {
 } from './project.js'
 import { GENS, genDefaults } from './gen.js'
 import { KIND_NAMES, KINDS, kindOf } from './color.js'
-import { ART_LINE, ACCEPT, boxOf, costOf, defaultPlace, bitmapsNow, fitArt, lookThumb, previewPx, replaceAsset, setFps, setLit, setLook, setPlace } from './assets.js'
+import { ART_LINE, ACCEPT, assetAt, assetsOf, boxOf, costOf, defaultPlace, bitmapsNow, fitArt, hasVersions, lookThumb, momentsOf, previewPx, removeVersion, replaceAsset, setFps, setLit, setLook, setPlace, setVersionAt, splitVersions } from './assets.js'
 import { canFit, estimateCost, fullLook, lookPresets, lookSchema, sameLook, withPreset } from './fxa.js'
 import { V, compare, setMotionPreview, setOverride } from './canvas.js'
-import { btn, buttons, colorField, note, section, seg, select, slider, textField, toggle } from './controls.js'
+import { btn, buttons, colorField, fitSegs, note, section, seg, select, slider, textField, toggle } from './controls.js'
 import { menu, toast } from './ui.js'
 import { $, $$, debounce, fmt, h, icon, isMac } from './util.js'
 
@@ -40,6 +40,8 @@ export function initInspector() {
   scroll = h('div.iscroll')
   helpEl = h('div.helpline', { 'aria-live': 'polite' }, DEFAULT_HELP)
   root.replaceChildren(h('div.insp', null, rail, h('div.ipane', null, scroll, helpEl)))
+  // The panel's width changes with the window, the sheets and the scrollbar: choices re-fit.
+  if (window.ResizeObserver) new ResizeObserver(() => $$('.segs', scroll).forEach(fitSegs)).observe(scroll)
   root.addEventListener('pointerover', e => {
     const el = e.target.closest('[data-help]')
     const t = el?.getAttribute('data-help')
@@ -118,7 +120,7 @@ function layerTab(l) {
     ),
   )
   out.push(momentsCard(l))
-  if (isImage(l)) out.push(artCard(l))
+  if (isImage(l)) out.push(...(hasVersions(l) ? [versionsCard(l), artCard(l)] : [artCard(l), versionsCard(l)]))
   if (isGen(l) && l.gen) out.push(genCard(l))
   if (paintable(l)) out.push(paintCard(l))
   if (frameCount(l) > 1) out.push(framesCard(l))
@@ -162,8 +164,8 @@ function artCard(l) {
     slider({ label: 'Across', help: 'Where the art\'s left edge sits, in cells from the left. Or drag the art with the Move tool (V).', min: -Math.round(a.w * p.scale), max: W, step: 1, value: p.x, def: defaultPlace(a, bitmapsNow(l.asset)?.[0]).x, unit: '', onInput: v => live({ x: v }), onChange: v => commit({ x: v }) }),
     slider({ label: 'Down', help: 'Where its top edge sits, in cells from the top.', min: -Math.round(a.h * p.scale), max: H, step: 1, value: p.y, def: defaultPlace(a, bitmapsNow(l.asset)?.[0]).y, onInput: v => live({ y: v }), onChange: v => commit({ y: v }) }),
     slider({ label: 'Size', help: 'How big the art is: 100% is one cell per pixel of the art. Or drag a corner, or hold Alt and scroll over it.', min: 2, max: 800, step: 1, value: pct, def: Math.round(defaultPlace(a, bitmapsNow(l.asset)?.[0]).scale * 100), unit: '%', onInput: v => live(scaleAbout(l, v / 100)), onChange: v => commit(scaleAbout(l, v / 100)) }),
-    S.doc.moments.length > 1
-      ? toggle({ label: 'Light by the time of day', help: 'Off, your art keeps its own colours all day. On, it is taken as drawn by day and takes the light of each moment: warmer at sunset, darker and bluer at night.', value: !!l.lit, find: 'Light by the time of day', onChange: v => setLit(l.id, v) })
+    S.doc.moments.length > 1 && !hasVersions(l)
+      ? toggle({ label: 'Light by the time of day', help: 'Off: your art keeps its own colours all day. On: it is lit as drawn by day, warmer at sunset, darker and bluer at night.', value: !!l.lit, find: 'Light by the time of day', onChange: v => setLit(l.id, v) })
       : null,
     buttons(
       btn('Flip', { icon: 'flip', help: 'Mirrors the art left to right.', key: 'Shift+H', onClick: () => commit({ flipX: !p.flipX }) }),
@@ -193,6 +195,54 @@ const fitPlace = a => {
 function replaceMenu(anchor, l) {
   const items = Object.entries(S.doc.assets || {}).filter(([id]) => id !== l.asset).map(([id, a]) => ({ label: a.name, run: () => replaceAsset(l.id, id) }))
   menu(anchor, [...items, items.length ? 'sep' : null, { label: 'Open a file…', icon: 'upload', run: () => emit({ openArt: true, replace: l.id }) }], { place: 'below', align: 'end' })
+}
+// Other pictures of the same scene for some moments (a night one, say), in the layer's place
+// and look. The layer list says which shows when; the day line switches them.
+function versionsCard(l) {
+  if (!S.doc.assets?.[l.asset] || !l.place) return null
+  const list = assetsOf(l)
+  const many = list.length > 1
+  return section(
+    { title: 'Times of day', help: 'Other pictures of the same scene, each shown at its own moments: a day one and a night one, say. They share the look and the place.' },
+    many ? h('div.vlist', null, list.map(id => versionRow(l, id))) : note('One picture at every moment. Another picture of the same scene can take over at one moment: a night one, say.', 'dim'),
+    many ? note('One look and one place for all of them. Move along the day line to see them switch.', 'dim') : null,
+    buttons(
+      btn('Add a version for another time of day…', { icon: 'plus', help: 'Another picture of the same scene for one moment, in the same place with the same look. It shows only at that moment.', find: 'Add a version for another time of day', onClick: e => versionMenu(e.currentTarget, l) }),
+      many && btn('Split into layers', { help: 'Each picture becomes a layer of its own, shown at its moments, so each can have its own look.', onClick: () => splitVersions(l.id) }),
+    ),
+  )
+}
+function versionRow(l, id) {
+  const a = S.doc.assets[id]
+  const at = momentsOf(l, id)
+  const names = at.map(m => S.doc.moments.find(x => x.id === m)?.name).join(', ')
+  const thumb = h('canvas.athumb', { width: 96, height: 60 })
+  drawAsset(thumb, id)
+  const own = id === l.asset
+  const items = () => [
+    { head: 'Shows at' },
+    ...S.doc.moments.map(m => {
+      const on = at.includes(m.id)
+      // A moment leaves a version for the layer's own picture; the own one cannot give one up.
+      return { label: m.name, checked: on, disabled: own && on, run: () => setVersionAt(l.id, m.id, on ? l.asset : id) }
+    }),
+    ...(own ? [] : ['sep', { label: 'Remove this version', icon: 'trash', run: () => removeVersion(l.id, id) }]),
+  ]
+  return h('div.arow.vrow' + (at.includes(S.mid) ? '.now' : ''), null,
+    thumb,
+    h('div.ameta', null, h('div.aname', null, a.name), h('div.adim', null, names ? 'Shows at ' + names : 'Shows at no moment')),
+    h('button.ib', { type: 'button', 'aria-label': 'Moments of ' + a.name, 'data-hint': 'The moments it shows at', on: { click: e => menu(e.currentTarget, items(), { place: 'below', align: 'end' }) } }, icon('more')),
+  )
+}
+export function versionMenu(anchor, l) {
+  const open = mid => emit({ openArt: true, version: { id: l.id, mid } })
+  const items = S.doc.moments.filter(m => assetAt(l, m.id) === l.asset).map(m => ({ label: 'For ' + m.name, run: () => open(m.id) }))
+  if (S.doc.moments.length === 1) {
+    const add = S.doc.moments[0].id === 'night' ? { id: 'day', name: 'Day', start: 6 } : { id: 'night', name: 'Night', start: 18 }
+    items.push({ label: 'For ' + add.name + ' (adds a moment at ' + String(add.start).padStart(2, '0') + ':00)', run: () => { const mid = A.addMoment(add); if (mid) open(mid) } })
+  }
+  if (!items.length) items.push({ label: 'Every moment has its own picture', disabled: true })
+  menu(anchor, [{ head: 'Which moment?' }, ...items], { place: 'below', align: 'start' })
 }
 export async function drawAsset(canvas, assetId) {
   const { framesOf } = await import('./assets.js')
@@ -261,7 +311,7 @@ function lookTab(l) {
   const job = ++thumbJob
   const grid = h('div.looks')
   const presets = lookPresets()
-  const sig = l.asset + '|' + JSON.stringify(l.place) + '|' + JSON.stringify(look.cut) + '|' + S.mid + '|' + S.doc.palette.length
+  const sig = assetAt(l) + '|' + JSON.stringify(l.place) + '|' + JSON.stringify(look.cut) + '|' + S.mid + '|' + S.doc.palette.length
   const queue = []
   for (const p of presets) {
     const key = sig + '|' + p.id
@@ -316,7 +366,7 @@ function lookTab(l) {
 // The budget is the smaller of 60% of a scene and what the other layers leave (with room for
 // the scene's own wrapper), so the art never crowds out the rest.
 function fitButton(l) {
-  const b = btn('Make it fit', { icon: 'wand', find: 'Look Make it fit', help: 'Simplifies this look a step at a time until the art takes at most 60% of a scene, or what the other layers leave: a lighter dither, a smoother picture, fewer colours. Undo brings it back.' })
+  const b = btn('Make it fit', { icon: 'wand', find: 'Look Make it fit', help: 'Simplifies the look step by step until the art takes at most 60% of a scene, or what the other layers leave. Undo brings it back.' })
   b.addEventListener('click', async () => {
     if (b.disabled) return
     b.disabled = true

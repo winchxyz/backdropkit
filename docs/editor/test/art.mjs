@@ -40,36 +40,45 @@ export function png(w, h, rgba) {
 }
 
 const mix = (a, b, t) => a + (b - a) * t
-// A landscape "photo": a dusk gradient sky, a sun, two ridges, a lake, with a little noise.
-export function photo(w = 480, h = 300) {
+// A landscape "photo": a gradient sky, a sun (or moon), two ridges, a lake, with a little
+// noise. tone: 'dusk' (the default), 'day', 'night', or 'white' (a nearly white picture).
+const TONES = {
+  dusk: { top: [40, 50, 120], low: [250, 150, 110], sun: [255, 225, 160], glow: [255, 200, 0], r1: [92, 60, 96], r2: [46, 34, 58], lake: [[200, 120, 110], [60, 50, 90]], glint: [255, 210, 150], size: 34 },
+  day: { top: [70, 130, 220], low: [200, 225, 250], sun: [255, 250, 220], glow: [255, 250, 230], r1: [96, 150, 96], r2: [52, 104, 64], lake: [[130, 180, 230], [60, 110, 170]], glint: [255, 255, 240], size: 34 },
+  night: { top: [6, 10, 26], low: [30, 40, 82], sun: [232, 236, 250], glow: [120, 140, 200], r1: [26, 30, 52], r2: [12, 15, 28], lake: [[22, 32, 62], [8, 12, 30]], glint: [200, 210, 240], size: 20 },
+  white: { top: [250, 250, 250], low: [242, 242, 244], sun: [255, 255, 255], glow: [255, 255, 255], r1: [228, 228, 230], r2: [214, 214, 218], lake: [[236, 238, 242], [226, 228, 234]], glint: [255, 255, 255], size: 34 },
+}
+export function photo(w = 480, h = 300, { tone = 'dusk' } = {}) {
+  const T = TONES[tone] || TONES.dusk
   const d = new Uint8Array(w * h * 4)
   let seed = 7
   const rnd = () => ((seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff)
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const t = y / h
-      let r = mix(40, 250, t * 1.2)
-      let g = mix(50, 150, t)
-      let b = mix(120, 110, t)
+      const t = Math.min(1, (y / h) * 1.2)
+      let r = mix(T.top[0], T.low[0], t)
+      let g = mix(T.top[1], T.low[1], t)
+      let b = mix(T.top[2], T.low[2], t)
       const sx = w * 0.62
       const sy = h * 0.42
       const ds = Math.hypot(x - sx, y - sy)
-      if (ds < 34) (r = 255), (g = 225), (b = 160)
-      else if (ds < 90) {
-        const k = 1 - (ds - 34) / 56
-        r = mix(r, 255, k * 0.5)
-        g = mix(g, 200, k * 0.4)
+      if (ds < T.size) [r, g, b] = T.sun
+      else if (ds < T.size + 56) {
+        const k = 1 - (ds - T.size) / 56
+        r = mix(r, T.glow[0], k * 0.5)
+        g = mix(g, T.glow[1], k * 0.4)
+        b = mix(b, T.glow[2], k * 0.3)
       }
       const r1 = h * 0.55 + Math.sin(x / 37) * 18 + Math.sin(x / 11) * 5
       const r2 = h * 0.66 + Math.sin(x / 53 + 2) * 14 + Math.sin(x / 7) * 3
-      if (y > r1) (r = 92), (g = 60), (b = 96)
-      if (y > r2) (r = 46), (g = 34), (b = 58)
+      if (y > r1) [r, g, b] = T.r1
+      if (y > r2) [r, g, b] = T.r2
       if (y > h * 0.8) {
         const k = (y - h * 0.8) / (h * 0.2)
-        r = mix(200, 60, k)
-        g = mix(120, 50, k)
-        b = mix(110, 90, k)
-        if (Math.abs(x - sx) < 30 - k * 20 && (y & 3) < 2) (r = 255), (g = 210), (b = 150)
+        r = mix(T.lake[0][0], T.lake[1][0], k)
+        g = mix(T.lake[0][1], T.lake[1][1], k)
+        b = mix(T.lake[0][2], T.lake[1][2], k)
+        if (Math.abs(x - sx) < 30 - k * 20 && (y & 3) < 2) [r, g, b] = T.glint
       }
       const n = (rnd() - 0.5) * 10
       const i = (y * w + x) * 4

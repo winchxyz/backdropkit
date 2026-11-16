@@ -113,6 +113,7 @@ assets: {                       // in project.json; originals kept so a look can
 - The look's colours join the shared palette as slots (an exact colour already there is reused), so Relight gives uploaded art its sunset and night colours like everything else.
 - Two editor-only fields (the exporter ignores them): `own: [slot, ...]`, the slots the art's colours were given, so a new look or a move reuses them instead of adding slots; and `lit: true`, the art is taken as drawn by day and relit for each moment's light. Without `lit` the art keeps its own colours at every moment.
 - `frames` and `anim` are allowed on any layer. A walking cat can play its frames and drift at the same time.
+- One more editor-only field: `versions: { momentId: assetId }`, other pictures of the same scene for some moments (a day picture with a night one). At a moment listed there the layer shows that asset instead of `asset`; at every other moment it shows `asset`. All of them share `look` and `place` (a version as wide as `asset`, standing on the same foot). The editor bakes each picture through the look and writes the result to `byMoment` for every moment, so the exporter needs nothing new: it reads `byMoment` as for any layer. A layer with versions is a still (no `frames`; an animated asset gives its first frame), and its slots take, at each moment, the colours of the picture shown then, so `lit` does not apply to it. Moment ids and asset ids that do not exist are dropped on open.
 
 ### Looks (the effect stack, baked into cells; editor-only)
 
