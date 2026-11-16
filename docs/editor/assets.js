@@ -504,12 +504,13 @@ export function originalPx(l, frame = 0) {
   for (let i = 0; i < N; i++) if (d[i * 4 + 3] >= 128) px[i] = pack(d[i * 4], d[i * 4 + 1], d[i * 4 + 2])
   return px
 }
-// A thumbnail of a look on the visitor's own art, cropped to the art's box.
+// A thumbnail of a look on the visitor's own art, cropped to the art's box. True once drawn;
+// false (the canvas untouched) while the art's pictures are not decoded yet.
 export function lookThumb(canvas, l, look) {
   const p = previewPx(l, { look })
+  if (!p) return false
   const x = canvas.getContext('2d')
   x.clearRect(0, 0, canvas.width, canvas.height)
-  if (!p) return
   const box = boxOf(l) || { x: 0, y: 0, w: W, h: H }
   const bx = clamp(Math.floor(box.x), 0, W - 1)
   const by = clamp(Math.floor(box.y), 0, H - 1)
@@ -524,6 +525,7 @@ export function lookThumb(canvas, l, look) {
   const dw = bw * k
   const dh = bh * k
   x.drawImage(off, bx, by, bw, bh, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh)
+  return true
 }
 // About how many characters a layer's cells take in a scene, as fx's estimate counts them.
 export function costOf(cells, mid = S.mid, doc = S.doc) {

@@ -299,6 +299,8 @@ function framesCard(l) {
 /* ---------- Look ---------- */
 
 const thumbs = new Map() // cache key -> canvas
+const drawn = new WeakSet() // the thumbnails a look has been drawn into
+const lastDrawn = new Map() // preset id -> its latest drawn thumbnail
 let thumbJob = 0
 function lookTab(l) {
   if (!l || !isImage(l)) {
@@ -316,21 +318,27 @@ function lookTab(l) {
   for (const p of presets) {
     const key = sig + '|' + p.id
     let c = thumbs.get(key)
-    const fresh = !c
     if (!c) {
       c = h('canvas.lthumb', { width: 120, height: 76 })
+      // Until it is drawn, it keeps showing this look's last thumbnail, not an empty box.
+      const prev = lastDrawn.get(p.id)
+      if (prev) c.getContext('2d').drawImage(prev, 0, 0)
       thumbs.set(key, c)
       if (thumbs.size > 120) thumbs.delete(thumbs.keys().next().value)
     }
     const active = sameLook(look, withPreset(look, p))
     grid.append(h('button.lk', { type: 'button', 'aria-pressed': String(active), 'data-help': (p.hint ? p.hint + ' ' : '') + 'Your settings below change with it; the background stays.', 'data-find': 'Look ' + p.name, on: { click: () => setLook(l.id, withPreset(fullLook(getLayer(l.id)?.look), p)) } }, c, h('span', null, p.name)))
-    if (fresh) queue.push([c, p])
+    // Not drawn yet, even if an earlier panel queued it and was replaced before its turn.
+    if (!drawn.has(c)) queue.push([c, p])
   }
   // Draw the thumbnails a few at a time, so the panel opens at once.
   const step = () => {
     if (job !== thumbJob || !queue.length) return
     const [c, p] = queue.shift()
-    lookThumb(c, l, withPreset(look, p))
+    if (lookThumb(c, l, withPreset(look, p))) {
+      drawn.add(c)
+      lastDrawn.set(p.id, c)
+    }
     if (window.requestIdleCallback) requestIdleCallback(step, { timeout: 200 })
     else setTimeout(step, 0)
   }

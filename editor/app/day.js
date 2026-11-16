@@ -20,6 +20,8 @@ export function initDay() {
   draw()
   on(what => {
     if (what.hover || what.luma || what.zoom) return
+    // A new document: the last check was of another one, so the status waits for its own.
+    if (what.loaded) Object.assign(CHECK, { state: 'checking', result: null, estimate: null, error: null })
     if (what.doc || what.loaded) runChecks()
     if (what.time && !what.moment) return drawTime()
     if (holdDraw) return lightUpdate()
@@ -200,6 +202,8 @@ export const playDayToggle = playDay
 // After edits, the exporter encodes every moment (in a worker) and says what the app's player
 // would make of it. While the exporter is not on the page, an estimate stands in.
 const runChecks = debounce(async () => {
+  // The start's empty document is not checked: its scene is made once the start is answered.
+  if (document.body.classList.contains('starting')) return
   const rev = S.rev
   CHECK.rev = rev
   if (!(await ready())) {
