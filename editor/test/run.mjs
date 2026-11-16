@@ -19,6 +19,8 @@
 // Everything is written under outDir (default: <tmp>/backdropkit-editor-test): scenes/,
 // archives/ (with a packs.json for check-packs), unpacked/, results.json. Exits 1 on any
 // failure. ONLY=slug,slug runs some projects; SKIP=seam,app,player,archive skips checks.
+// PROJECTS=community/<theme>/project.json[,...] runs those projects instead of the test set
+// (how a theme sent in a pull request is checked; see CONTRIBUTING.md).
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
@@ -46,8 +48,20 @@ const fail = (where, what) => {
 const t0 = Date.now()
 const page = await open()
 
-/* ---------- The pictures the projects start from ---------- */
+/* ---------- The projects: the test set, or the ones named in PROJECTS ---------- */
 
+// PROJECTS=a/project.json,b/project.json checks those projects (a community theme, say)
+// instead of the test set, through every step below.
+const EXTERNAL = process.env.PROJECTS ? process.env.PROJECTS.split(',').map(f => path.resolve(f.trim())) : null
+const projects = EXTERNAL ? EXTERNAL.map(external) : await testSet()
+function external(file) {
+  const project = JSON.parse(fs.readFileSync(file, 'utf8'))
+  if (project.format !== 'backdropkit' && !project.layers) throw new Error(file + ' is not a BackdropKit project')
+  // A glint or a moving layer is checked mid-way too.
+  return { project, kind: 'external', extraT: [0.1, 1] }
+}
+
+async function testSet() {
 console.log('pictures')
 const harborMoments = JSON.parse(fs.readFileSync(path.join(KIT, 'docs', 'themes', 'packs.json'), 'utf8')).harbor.moments.map(m => ({ id: m.id, name: m.name, start: m.start }))
 const harbor = await page.evaluate(async ids => {
@@ -78,13 +92,14 @@ const lake = await page.evaluate(
 lake.cells = decodeCells(lake.cells, N)
 console.log('  art: ' + lake.colors.length + ' colours from a Mirror Lake raster, dither ' + ART_DITHER)
 
-const projects = [
+return [
   { project: generated(), kind: 'generated' },
   { project: harborStarter(harbor, harborMoments), kind: 'starter' },
   { project: heavy('near'), kind: 'near', expectMerge: true },
   { project: heavy('over'), kind: 'over', expectError: true },
   { project: artwork(lake), kind: 'art', extraT: [0.1, 1] },
 ].filter(x => !ONLY || ONLY.includes(x.project.slug))
+}
 
 /* ---------- Export ---------- */
 

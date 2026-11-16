@@ -66,6 +66,8 @@ Start from one of the 14 themes, your own art (a picture, sprites, animated GIFs
 
 The app plays pixel scenes only (no embedded pictures), so uploaded art always becomes cells on the 320 x 200 grid; the look decides how.
 
+**Share yours:** made a theme you like? Send its `project.json` and preview in a pull request; if it looks good, it joins the collection. The steps and the checks are in [CONTRIBUTING.md](CONTRIBUTING.md).
+
 - `editor/app/`: the editor page. `editor/lib/`: the exporter (project to scenes and archive). `editor/fx/`: the looks. `editor/PROJECT.md`: the project format they share.
 - Checks: `node editor/test/run.mjs <outDir>` (the exporter against the player checks) and `node editor/app/test/e2e.mjs` (the editor end to end, after `EDITOR_ONLY=1 node site/build.mjs` and `node site/serve.mjs`).
 

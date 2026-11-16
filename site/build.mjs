@@ -302,7 +302,8 @@ const body = `<div class="scene" aria-hidden="true"><img id="s0" class="on" alt=
     ${
       HAS_EDITOR
         ? `<p>Yes, in the editor. Start from one of these themes, your own picture or a blank scene, then stack layers, paint cell by cell, add motion and give every colour its time of day. It checks the scene against the app's player as you work, and exports the same archive and install prompt as the themes here.</p>
-    <div class="actions"><a class="btn primary" id="open-editor" href="editor/">Open the editor</a><span class="note">It runs in your browser, and your work stays on your computer.</span></div>`
+    <div class="actions"><a class="btn primary" id="open-editor" href="editor/">Open the editor</a><span class="note">It runs in your browser, and your work stays on your computer.</span></div>
+    <p>Made one you like? <a href="${REPO}/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Send it in a pull request</a>, and if it looks good it joins the collection.</p>`
         : `<p>Soon. A theme editor is on the way: layers, pixel brushes, motion, light and the time of day, exported as the same kind of archive. It will open from the box below.</p>
     <div class="status"><span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>Building the theme editor</div>`
     }

@@ -246,6 +246,7 @@ body::before {
 .day-line input:focus-visible ~ .knob { box-shadow: 0 0 0 3px var(--glass-line) }
 .ticks { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-3); font-variant-numeric: tabular-nums; padding: 0 1px }
 .actions { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 2px }
+.actions + p { margin-top: 12px }
 .btn {
   height: 34px; padding: 0 14px; border-radius: 9px; display: inline-flex; align-items: center; gap: 7px;
   font-size: 13.5px; font-weight: 500; text-decoration: none; cursor: pointer; border: 1px solid var(--line); background: transparent;
@@ -439,6 +440,7 @@ body::before {
     <div class="who"><svg class="mark" viewBox="0 0 8 8" shape-rendering="crispEdges" aria-hidden="true"><path fill="currentColor" d="M2 0h1v1h-1zM3 0h1v1h-1zM4 0h1v1h-1zM5 0h1v1h-1zM1 1h1v1h-1zM2 1h1v1h-1zM3 1h1v1h-1zM4 1h1v1h-1zM5 1h1v1h-1zM6 1h1v1h-1zM0 2h1v1h-1zM1 2h1v1h-1zM2 2h1v1h-1zM3 2h1v1h-1zM4 2h1v1h-1zM5 2h1v1h-1zM6 2h1v1h-1zM7 2h1v1h-1zM0 3h1v1h-1zM1 3h1v1h-1zM2 3h1v1h-1zM3 3h1v1h-1zM4 3h1v1h-1zM5 3h1v1h-1zM6 3h1v1h-1zM7 3h1v1h-1zM0 5h1v1h-1zM1 5h1v1h-1zM2 5h1v1h-1zM3 5h1v1h-1zM4 5h1v1h-1zM5 5h1v1h-1zM6 5h1v1h-1zM7 5h1v1h-1zM1 7h1v1h-1zM2 7h1v1h-1zM3 7h1v1h-1zM4 7h1v1h-1zM5 7h1v1h-1zM6 7h1v1h-1z"/></svg>winch-ai</div>
     <p>Yes, in the editor. Start from one of these themes, your own picture or a blank scene, then stack layers, paint cell by cell, add motion and give every colour its time of day. It checks the scene against the app's player as you work, and exports the same archive and install prompt as the themes here.</p>
     <div class="actions"><a class="btn primary" id="open-editor" href="editor/">Open the editor</a><span class="note">It runs in your browser, and your work stays on your computer.</span></div>
+    <p>Made one you like? <a href="https://github.com/winchxyz/backdropkit/blob/main/CONTRIBUTING.md" target="_blank" rel="noopener">Send it in a pull request</a>, and if it looks good it joins the collection.</p>
   </div>
 
   <p class="fine" id="fine">Community project, not affiliated with Anthropic. Claude and Claude Code are trademarks of Anthropic. <a href="https://github.com/winchxyz/backdropkit" target="_blank" rel="noopener">Source on GitHub</a></p>

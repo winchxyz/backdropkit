@@ -20,6 +20,7 @@ const user = text => h('div.msg.user', null, h('div', null, text))
 const bot = (...kids) => h('div.msg.bot', null, who(), kids)
 const p = (text, cls) => h('p' + (cls ? '.' + cls : ''), null, text)
 const FOOT = 'Community project, not affiliated with Anthropic.'
+const SHARE_URL = 'https://github.com/winchxyz/backdropkit/blob/main/CONTRIBUTING.md'
 
 let mode = null // 'start' | 'sample' | 'export'
 
@@ -403,6 +404,7 @@ export async function runExport() {
         p(file + ' is in your downloads. To install it, give this to Claude Code in the app, with the archive next to it:'),
         h('div.prompt', null, h('div.prompt-head', null, h('span', null, 'Install prompt'), copy), pre),
         h('div.row', null, saveBtn()),
+        h('p', null, 'Made a theme you like? ', h('a', { href: SHARE_URL, target: '_blank', rel: 'noopener' }, 'Send it in a pull request'), ' (its project.json and preview.png from the archive), and if it looks good it joins the collection.'),
       ))
     } catch (e) {
       say(bot(p(e.missing ? 'The exporter is not on this page yet.' : 'The export stopped: ' + e.message), h('div.row', null, saveBtn())))

@@ -526,6 +526,7 @@ body.starting .chat { padding-bottom: 40px }
 .hours { font-size: var(--fs-s); color: var(--ink-2); margin: 0 0 4px }
 .cardbox { margin-top: var(--s3); padding: 14px var(--s4); border-radius: 12px; background: var(--bubble); border: 1px solid var(--line); box-shadow: var(--sh-2); display: grid; gap: var(--s3); font-size: 13.5px }
 .cardbox .row, .msg .row { display: flex; flex-wrap: wrap; gap: var(--s2); align-items: center; margin-top: var(--s3) }
+.msg .row + p { margin-top: var(--s4) }
 .cardbox .row { margin-top: 0 }
 .cardbox .row.end { justify-content: flex-end }
 .dots { display: inline-flex; gap: 3px }
