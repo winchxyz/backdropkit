@@ -206,10 +206,10 @@ function sideAt(u, v, cs) {
   }
   if (u < 0.02 || u > LEN - 0.02) return null
   // Between the cab and the bed: a dark gap.
-  if (u >= CAB1 && u < BED0) return v > 0.46 && v < RAIL - 0.02 ? 'gap' : null
+  if (u >= CAB1 && u < BED0) return v > 0.46 && v <= RAIL ? 'gap' : null
   // The lower body: a rounded nose, the hood line rising to the cowl, the bed side.
   const top = u < 0.24 ? BELT - 0.1 + 0.1 * Math.sqrt(u / 0.24) : u < CAB1 ? BELT - 0.03 + 0.03 * Math.min(1, (u - 0.24) / (CAB0 - 0.24)) : RAIL
-  const bottom = u < 0.3 || u > LEN - 0.3 ? 0.44 : 0.4
+  const bottom = 0.4
   if (v >= bottom && v <= top) {
     if (u < 0.1 && v > 0.74 && v < 0.9) return 'headlamp'
     if (u > 0.1 && u < 0.22 && v > 0.6 && v < 0.67) return 'amber'
@@ -292,6 +292,11 @@ function truckBoxes(M, faces) {
     const part = sideAt(P[0] - XF, G - P[1], P[2] / F)
     return part ? parts[part]() : null
   })
+  // The windshield, raked from the cowl to the roof across the cab: it fills the corner between the
+  // hood and the A-pillar, where the road behind would show through.
+  // Its foot runs a little down into the cowl, under the hood's back edge, so no slit shows there.
+  // It sits 3 cm behind the A-pillar's line, so pillar and glass overlap instead of leaving a sliver.
+  poly([[XF + CAB0 - 0.03, G - BELT + 0.04, ZN + 0.03], [XF + rake(TOP) + 0.11, G - TOP, ZN + 0.03], [XF + rake(TOP) + 0.11, G - TOP, ZF - 0.03], [XF + CAB0 - 0.03, G - BELT + 0.04, ZF - 0.03]], () => parts.glass())
   // What shows from above, at our eye 0.2 m over the roof: the hood, the roof, into the bed.
   box(XF + 0.12, XF + CAB0, G - BELT + 0.02, G - 0.5, ZN + 0.02, ZF - 0.02, { top: () => paint([0, -1, 0], 'truck', sheen) }, { cast: false })
   box(XF + rake(TOP) + 0.08, XF + CAB1 - 0.08, G - TOP, G - BELT, ZN + 0.05, ZF - 0.05, { top: () => ({ ...mat(CREAM, 'truckRoof'), ...(sheen ? { e: sheen } : {}) }) }, { cast: false })
@@ -301,8 +306,10 @@ function truckBoxes(M, faces) {
   // Behind the openings: the dark wheel wells, then the tyres on steel wheels with chrome caps.
   for (const w of WHEELS) {
     const ring = (r, Z, from, to) => wheelRing(w, r, Z, from, to)
-    // Only inside the arch, above the body's bottom line: below it the road shows under the body.
-    poly(ring(ARCH + 0.02, ZN + 0.32, -0.25, Math.PI + 0.25), P => (G - P[1] < 0.42 ? null : mat('#141416', 'well')))
+    // Only above the body's bottom line: below it the road shows under the body. It is wider than
+    // the arch, since it lies deeper and so shows a little to the side of it; the body hides the
+    // rest.
+    poly(ring(ARCH + 0.15, ZN + 0.32, -0.25, Math.PI + 0.25), P => (G - P[1] < 0.42 || P[0] - XF < 0.3 || P[0] - XF > LEN - 0.3 ? null : mat('#141416', 'well')))
     poly(ring(WR, ZN + 0.08), (P, x, y) => {
       const du = P[0] - XF - w
       const dv = G - WR - P[1]

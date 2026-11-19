@@ -181,7 +181,18 @@ not turn.
   rolls a hole's step (a fifth of a turn, 9.3 cells) in 0.2 s, so they turn at the speed it
   drives, anticlockwise as it goes left. The light on them stays where it is.
 
-Sizes after this pass (empty marker): day 56,419, sunset 68,230, night 64,009 characters. Every
+Then the owner saw a few see-through cells by the windows. A mask of the cells the pickup covers
+(a frame with it against one without) showed four kinds of hole, all fixed:
+- There was no windshield, so the corner between the hood and the A-pillar, and the gap between the
+  mirror and the pillar, showed the wall behind. A raked glass face now runs from the cowl to the
+  roof across the cab, set 3 cm behind the pillar's line so the two overlap.
+- The dark gap between the cab and the bed stopped 2 cm under the bed rail: one row of sky.
+- The rear wheel well, 0.32 m deeper than the side, showed a crescent of road inside the arch's
+  far edge. The well is wider than the arch now; the body hides the rest.
+- One cell at each end between the bumper and the body's bottom line: the body now comes down to
+  0.4 m all along.
+
+Sizes after this pass (empty marker): day 56,457, sunset 67,799, night 63,734 characters. Every
 check above passes again: check.mjs, seamscan at T=0 and with the pickup on screen (no holes, at
 most 13 line pixels), purity 0, player PLAYS at 0.4-0.5 ms.
 

@@ -334,7 +334,7 @@
   },
   "gas-station": {
     "zip": "gas-station.zip",
-    "bytes": 99631,
+    "bytes": 99428,
     "version": "0.1.0",
     "moments": [
       {
