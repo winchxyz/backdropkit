@@ -51,19 +51,27 @@ const hhmm = (hour: number) => {
 const glassOf = (m: Moment) => '"tint":"' + m.tint + '","opacity":' + m.opacity
 const schemeOf = (m: Moment) => '"overrideColorScheme":"' + (m.dark ? 'dark' : 'light') + '"'
 
-// The moment whose scene the Backdrop draws, with its motion clock (--m) put back to the
-// file's 0s, and the motion clock it was drawn with, in seconds.
+// The scene as drawn, with its motion clock (--m) put back to the file's 0s and a price board's
+// digits taken out of its marker.
+const MARKER = "<g id='bk-board'></g>"
+const plainOf = (source: string) => source.replace(/--m:-?[\d.]+s/, '--m:0s').replace(/<g id='bk-board'>[\s\S]*?<\/g>/, MARKER)
+// The digits a price board was drawn with ('' for none).
+const boardOf = (source: string) => /<g id='bk-board'>([\s\S]*?)<\/g>/.exec(source)?.[1] ?? ''
+
+// The moment whose scene the Backdrop draws, and the motion clock it was drawn with, in
+// seconds.
 async function drawnMoment(ui: { drawn: () => Promise<unknown> }) {
   const tree = (await ui.drawn()) as { type: string; props: { source: string; alt: string } }
   expect(tree.type).toBe('Svg')
   const { source, alt } = tree.props
   const clockMark = /--m:(-?[\d.]+)s/.exec(source)
   expect(clockMark).not.toBeNull()
-  const plain = source.replace(/--m:-?[\d.]+s/, '--m:0s')
-  const moment = MOMENTS.find(m => m.svg === plain)
+  const moment = MOMENTS.find(m => m.svg === plainOf(source))
   expect(moment).toBeDefined()
   expect(source.length).toBeLessThanOrEqual(131072)
-  return { id: moment?.id, alt, motion: Number(clockMark?.[1]) }
+  // A theme with a board says its figures after the scene's own words.
+  expect(alt.startsWith(moment?.alt ?? '')).toBe(true)
+  return { id: moment?.id, alt, source, motion: Number(clockMark?.[1]) }
 }
 
 for (const m of MOMENTS) {
@@ -83,7 +91,7 @@ for (const m of MOMENTS) {
       const ui = await $.ui.mount({ ...BACKDROP, surface })
       const drawn = await drawnMoment(ui)
       expect(drawn.id).toBe(m.id)
-      expect(drawn.alt).toBe(m.alt)
+      if (THEME.board === undefined) expect(drawn.alt).toBe(m.alt)
       // The motion clock counts seconds from 2026-01-01 UTC, a fifth of a second ahead.
       expect(Math.abs(drawn.motion + ((when - Date.UTC(2026, 0, 1)) / 1000 + 0.2))).toBeLessThan(1)
       await ui.unmount()
@@ -210,5 +218,66 @@ test('/' + SLUG + '-time previews a moment and a time, and goes back', async ($,
   const wrong = await $.command.run(typed(SLUG + '-time', '25:00'))
   expect(wrong.text).toContain('No such moment or time')
   expect(sets.length).toBe(5)
+  await ui.unmount()
+})
+
+// The engine's usage figures, as session.measure and $.session.usage() give them.
+const reading = (percent: number, weekly?: number) => ({
+  context: { window: 200000, tokens: percent * 2000, percent },
+  rateLimits: [{ kind: 'five_hour', percentUsed: 90 }, ...(weekly === undefined ? [] : [{ kind: 'seven_day', percentUsed: weekly }])],
+})
+const turnEnd = (tokens: number, agentId?: string) => ({
+  answer: '',
+  durationMs: 1000,
+  isAborted: false,
+  turnId: 'turn-' + tokens,
+  reason: 'answer' as const,
+  ...(agentId === undefined ? {} : { agentId }),
+  usage: { model: 'claude', input_tokens: 10, output_tokens: tokens - 1010, cache_read_input_tokens: 1000, cache_creation_input_tokens: 0 },
+})
+
+test(THEME.board === undefined ? 'usage figures leave the scene as it is' : 'the price board shows the chat\'s figures', async ($, on) => {
+  const m = MOMENTS[0]
+  mock.clock(on, { now: at(middleOf(m)) })
+  mock.store(on, { 'tokens:chat-1': 1240000, 'tokens:other': 5 })
+  engine(on)
+  on('session.id', () => ({ value: 'chat-1' }))
+  on('session.usage', () => ({ value: { startedAt: 0, ...reading(25) } }))
+  on('session.measure', (_, e) => ({ changed: [...e.changed] }))
+  on('turn.complete', () => ({ text: '' }))
+  await $.session.start({ cwd: '/', surface: 'desktop', isInteractive: true })
+  const ui = await $.ui.mount({ ...BACKDROP, surface: 'desktop' })
+
+  if (THEME.board === undefined) {
+    await $.session.measure({ ...reading(62, 34), changed: ['context', 'rateLimits'] })
+    await $.turn.complete(turnEnd(50000))
+    const drawn = await drawnMoment(ui)
+    expect(drawn.alt).toBe(m.alt)
+    expect(boardOf(drawn.source)).toBe('')
+    await ui.unmount()
+    return
+  }
+
+  // The chat's count carries on from the store; no weekly reading yet.
+  let drawn = await drawnMoment(ui)
+  expect(drawn.alt).toContain('1.24M tokens, 25% context, --% of the weekly limit')
+  expect(boardOf(drawn.source)).not.toBe('')
+  const before = boardOf(drawn.source)
+
+  await $.session.measure({ ...reading(62, 34), changed: ['context', 'rateLimits'] })
+  drawn = await drawnMoment(ui)
+  expect(drawn.alt).toContain('1.24M tokens, 62% context, 34% of the weekly limit')
+  expect(boardOf(drawn.source)).not.toBe(before)
+
+  // A turn of the main loop and one of a subagent both count.
+  await $.turn.complete(turnEnd(30000))
+  await $.turn.complete(turnEnd(20000, 'agent-1'))
+  drawn = await drawnMoment(ui)
+  expect(drawn.alt).toContain('1.29M tokens, 62% context, 34% of the weekly limit')
+
+  // A reading without a weekly window keeps the last one.
+  await $.session.measure({ ...reading(63), changed: ['context'] })
+  drawn = await drawnMoment(ui)
+  expect(drawn.alt).toContain('1.29M tokens, 63% context, 34% of the weekly limit')
   await ui.unmount()
 })

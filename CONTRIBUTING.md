@@ -21,7 +21,7 @@ Nothing else: no zip, no `mod/` folder, no code. The mod that installs the theme
 
 ## What gets checked
 
-Every theme goes through the same checks as the 14 here:
+Every theme goes through the same checks as the ones here:
 
 - each moment fits the app's limit (131,072 characters after the app cleans the scene up);
 - no 1 px lines between cells at 11 window sizes, from 1x to 2x displays;
@@ -39,7 +39,7 @@ PROJECTS=community/<folder>/project.json node editor/test/run.mjs
 - Your own art, or art you are free to share. Sending it means it is published here under the MIT License, like the rest of the repository.
 - No logos or brands, no real people, no characters from games, films or shows.
 - Nothing NSFW.
-- A folder name that isn't taken: not one of the 14 themes and not another theme in `community/`.
+- A folder name that isn't taken: not one of the themes here and not another theme in `community/`.
 - One theme per pull request.
 
 ## Anything else

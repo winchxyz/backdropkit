@@ -137,7 +137,7 @@ export async function pictureFromImage(source, opts = {}) {
 
 /* ---------- Export ---------- */
 
-const MOD_FILES = ['colors.d.ts', 'colors.js', 'hooks.json', 'make-colors.d.ts', 'make-colors.js', 'register.test.tsx', 'register.tsx', 'theme.d.ts']
+const MOD_FILES = ['board.d.ts', 'board.js', 'colors.d.ts', 'colors.js', 'hooks.json', 'make-colors.d.ts', 'make-colors.js', 'register.test.tsx', 'register.tsx', 'theme.d.ts']
 async function modFiles(X) {
   const names = X.MOD_FILES || MOD_FILES
   const out = {}

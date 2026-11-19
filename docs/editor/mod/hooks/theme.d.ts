@@ -1,4 +1,5 @@
 // The theme in theme.js, which engine/pack.mjs writes for each BackdropKit theme.
+import type { Board } from './board.js'
 
 export type Moment = {
   /** The moment's id, as in its scene's file name: '' for a theme that is the same all day. */
@@ -26,6 +27,8 @@ export type Theme = {
   name: string
   /** At least one moment, in the order of the day: by start hour. */
   moments: readonly [Moment, ...Moment[]]
+  /** A price board with live figures (Gas Station): where its digits go and their colours. */
+  board?: Board
 }
 
 export declare const THEME: Theme

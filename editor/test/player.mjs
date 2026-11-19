@@ -98,7 +98,7 @@ export async function check(source, opts = {}) {
       canvas.width = 64
       canvas.height = 40
       const ctx = canvas.getContext('2d', { willReadFrequently: true })
-      const count = A.counter()
+      const count = A.counter ? A.counter() : null
       const windows = []
       let start = NaN
       let sum = 0
@@ -116,7 +116,7 @@ export async function check(source, opts = {}) {
           const t1 = performance.now()
           const data = ctx.getImageData(0, 0, 64, 40).data
           const t2 = performance.now()
-          const flashed = count.count(data, now, w, h, [])
+          const flashed = count ? count.count(data, now, w, h, []) : false
           const t3 = performance.now()
           const cost = t3 - now
           parts = [parts[0] + t1 - now, parts[1] + t2 - t1, parts[2] + t3 - t2]
@@ -148,7 +148,7 @@ export async function check(source, opts = {}) {
   )
   await page.close()
   const worst = report.windows?.length ? Math.max(...report.windows.map(w => w.averageMs)) : null
-  return { ...report, worstAverageMs: worst, limitMs: app.limitMs, windowMs: app.windowMs, gpu, size: W + 'x' + H + '@' + DPR, app: app.url.split('/').pop(), shape: app.shape, made: app.made }
+  return { ...report, worstAverageMs: worst, limitMs: app.limitMs, windowMs: app.windowMs, gpu, size: W + 'x' + H + '@' + DPR, app: app.url.split('/').pop(), shape: app.shape, made: app.made, flashChecked: !!app.flash }
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {

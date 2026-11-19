@@ -39,10 +39,12 @@ const HOOK_NOTES = {
   'colors.js': () => 'the colours of the light and the dark look, and the blur of the frosted glass',
   'make-colors.js': () => "Anthropic's colour helper, copied from Claude Code's plugin-authoring skill",
   'hooks.json': () => 'names register.tsx as the module to load',
+  'board.js': () => "the price board: a theme's live figures drawn into its scene as pixel digits (used by themes with a board)",
 }
 
-// theme.js. moments: [{ id, name, start, tone, tint, opacity, alt, text }], in start order.
-export function themeJs(theme, moments, { by = 'packer' } = {}) {
+// theme.js. moments: [{ id, name, start, tone, tint, opacity, alt, text }], in start order;
+// board: the scene's price board (engine/theme-mod/hooks/board.js), for a theme with one.
+export function themeJs(theme, moments, { by = 'packer', board } = {}) {
   const lines = moments.map(
     m =>
       '    { id: ' + JSON.stringify(m.id) + ', name: ' + JSON.stringify(m.name) + ', start: ' + m.start + ', dark: ' + (m.tone === 'dark') +
@@ -58,7 +60,8 @@ export function themeJs(theme, moments, { by = 'packer' } = {}) {
         "// words come from the BackdropKit project, and packing again writes this file anew. Each scene\n" +
         '// is one animated SVG document, as the app plays it, and each moment lasts from its start hour\n' +
         '// until the next one starts.\n'
-  return head + 'export const THEME = {\n' + '  slug: ' + JSON.stringify(theme.slug) + ',\n' + '  name: ' + JSON.stringify(theme.name) + ',\n' + '  moments: [\n' + lines.join('\n') + '\n' + '  ],\n' + '}\n'
+  const boardLine = board ? '  board: ' + JSON.stringify(board) + ',\n' : ''
+  return head + 'export const THEME = {\n' + '  slug: ' + JSON.stringify(theme.slug) + ',\n' + '  name: ' + JSON.stringify(theme.name) + ',\n' + '  moments: [\n' + lines.join('\n') + '\n' + '  ],\n' + boardLine + '}\n'
 }
 
 export function description(theme, single, { by = 'packer', repo = REPO } = {}) {
@@ -70,7 +73,7 @@ export function description(theme, single, { by = 'packer', repo = REPO } = {}) 
 
 // The README. theme: { slug, name, line, about? } (about: the site catalog's words; the
 // editor's themes have none).
-export function readme(theme, moments, hooks, { by = 'packer', repo = REPO, heroOrder = HERO_ORDER } = {}) {
+export function readme(theme, moments, hooks, { by = 'packer', repo = REPO, heroOrder = HERO_ORDER, board } = {}) {
   const s = theme.slug
   const single = moments.length === 1
   const credit = creditOf(by, repo)
@@ -105,12 +108,29 @@ tinted from the scene.`
     by === 'editor'
       ? "- `project.json`: the theme's project file: open it in the BackdropKit editor to change the theme."
       : "- `project.json`: the theme's project file for the BackdropKit editor (empty for now)."
+  const boardText = board
+    ? `
+
+## The price board
+
+The sign shows three live figures instead of prices:
+
+- the tokens this chat has used, as the API counts them (cache reads included), counted from
+  the first turn the theme saw in it;
+- how full the context window is;
+- how much of your weekly usage limit is used (dashes until the first answer reports it, or
+  when you are not on a subscription).
+
+They come from the app's own usage figures and are drawn into the scene as pixel digits;
+nothing leaves your computer. The plugin keeps each chat's token count, and the last weekly
+reading, in its own store.`
+    : ''
   return `# ${theme.name}
 
 ${intro}
 
 It is an animated pixel-art scene behind your Claude Code conversation, with the app's colours
-to match. ${when}
+to match. ${when}${boardText}
 
 ${credit}
 
@@ -164,10 +184,10 @@ const textOf = d => (typeof d === 'string' ? d : new TextDecoder().decode(d))
 //   theme: { slug, name, line, about? }; moments: as themeJs; hookFiles: { name: text or
 //   bytes } of engine/theme-mod/hooks (theme.js is made here); preview: PNG bytes; project:
 //   the text of project.json.
-export function archiveEntries({ theme, moments, hookFiles, preview, project = '{}\n', by = 'packer', repo = REPO, heroOrder = HERO_ORDER }) {
+export function archiveEntries({ theme, moments, hookFiles, preview, project = '{}\n', by = 'packer', repo = REPO, heroOrder = HERO_ORDER, board }) {
   const s = theme.slug
   const single = moments.length === 1 && (by === 'editor' || moments[0].id === '')
-  const files = { ...hookFiles, 'theme.js': themeJs(theme, moments, { by }) }
+  const files = { ...hookFiles, 'theme.js': themeJs(theme, moments, { by, board }) }
   files['register.tsx'] = stampRegister(textOf(files['register.tsx']), s)
   const hooks = Object.keys(files).sort()
   const desc = description(theme, single, { by, repo })
@@ -183,7 +203,7 @@ export function archiveEntries({ theme, moments, hookFiles, preview, project = '
     { name: '.claude-plugin/marketplace.json', data: JSON.stringify(marketplace, null, 2) + '\n' },
     { name: 'mod/.claude-plugin/plugin.json', data: JSON.stringify(plugin, null, 2) + '\n' },
     ...hooks.map(f => ({ name: 'mod/hooks/' + f, data: files[f] })),
-    { name: 'README.md', data: readme(theme, moments, hooks, { by, repo, heroOrder }) },
+    { name: 'README.md', data: readme(theme, moments, hooks, { by, repo, heroOrder, board }) },
     { name: 'preview.png', data: preview ?? new Uint8Array(0) },
     { name: 'project.json', data: project },
   ]

@@ -9,6 +9,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
+import { fillBoard, SAMPLE } from '../../engine/board.mjs'
 import { HERO_ORDER, MOMENT_NAMES, MOMENT_ORDER, MOMENT_OVERRIDES, REPO, REPO_API, SUNFIELD_MOMENTS, THEMES } from './catalog.mjs'
 import { unzip, zip } from './zip.mjs'
 
@@ -66,6 +67,13 @@ function prototypeMoments(slug) {
     }
     if (!m[1]) single = true
     found.push({ id: m[1] ?? '', text })
+  }
+  // A scene with a price board (out/board.json) shows sample figures on the site; the app
+  // shows the live ones.
+  const boardFile = path.join(PROTOS, slug, 'out', 'board.json')
+  if (fs.existsSync(boardFile)) {
+    const board = JSON.parse(fs.readFileSync(boardFile, 'utf8'))
+    for (const f of found) f.text = fillBoard(f.text, board, f.id, SAMPLE)
   }
   // A one-moment scene is <slug>.svg; when moment files exist too, they win.
   const timed = found.filter(f => f.id)

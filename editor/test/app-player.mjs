@@ -8,6 +8,13 @@
 // of their own, and the flash detector's counter stays in the backdrop script, which imports
 // its colour ramp from that module. Both shapes are read.
 //
+// Since 2026-11-16 the player module strips what its list drops, parses again and checks each
+// element (the parser a `var` since 2026-11-18, and its top-level names one letter long), and
+// the backdrop's flash detector samples grids of cells beside a new frame reader. The list,
+// the parser and the frame-time limit are read from that shape too; the detector and the
+// reader are not ported yet, so `flash` and `counter` are null there (player.mjs then measures
+// frame time alone). The app's newest modules sit in the cache as zstd.
+//
 // findPlayer() -> { rules, parser, element, attr, css, flash, counter, limitMs, windowMs,
 //                   url, made, shape } or throws when the code is not found.
 // `rules` and `flash` are scripts to run in a page: `rules` defines the list and the parser in
@@ -38,9 +45,13 @@ export function cachedScripts() {
       return null
     }
   }
-  // Bodies are stored as sent: plain, brotli, gzip or zstd.
+  // Bodies are stored as sent: plain, brotli, gzip or zstd. A zstd frame starts with "(" (28 b5
+  // 2f fd), which passes for the start of a script, so the framed kinds are tried first.
   const text = b => {
-    for (const f of [x => x, zlib.brotliDecompressSync, zlib.gunzipSync, zlib.zstdDecompressSync]) {
+    const zstd = b.length > 4 && b[0] === 0x28 && b[1] === 0xb5 && b[2] === 0x2f && b[3] === 0xfd
+    const gzip = b.length > 2 && b[0] === 0x1f && b[1] === 0x8b
+    const order = zstd ? [zlib.zstdDecompressSync] : gzip ? [zlib.gunzipSync] : [x => x, zlib.brotliDecompressSync, zlib.gunzipSync, zlib.zstdDecompressSync]
+    for (const f of order) {
       try {
         const s = f(b).toString('utf8')
         if (/^[\s\S]{0,200}(import|var|function|export|let|const|\(|!)/.test(s) && !s.slice(0, 64).includes('\u0000')) return s
@@ -263,8 +274,10 @@ function scan(code) {
 // The source needed to run `root` from module `mod`: its declaration and every top-level one it
 // uses (names of two characters or more, which minified top-level names are; one-letter names
 // are locals), across imports. Returns a script that defines them in one function scope per
-// module and evaluates to `root`.
-function extract(modules, modName, root) {
+// module and evaluates to `root`. `short`: one-letter names count too, for a module whose own
+// top-level names are that short (the player module since 2026-11-16); a local that shares
+// such a name only brings in a declaration that is not needed.
+function extract(modules, modName, root, { short = false } = {}) {
   const scanned = new Map()
   const scanOf = name => {
     if (!scanned.has(name)) {
@@ -296,8 +309,10 @@ function extract(modules, modName, root) {
       return
     }
     set.add(name)
-    const ids = new Set(src.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""').match(/(?<![\w$.])[A-Za-z_$][\w$]+/g) ?? [])
-    for (const id of ids) if (id !== name && (s.fns.has(id) || s.vars.has(id) || s.imports.has(id))) visit(mod, id, false)
+    const ids = new Set(src.replace(/"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'/g, '""').match(short ? /(?<![\w$.])[A-Za-z_$][\w$]*/g : /(?<![\w$.])[A-Za-z_$][\w$]+/g) ?? [])
+    // A one-letter name is followed only to a declaration of this module (imports of that length
+    // are rarer than locals of it).
+    for (const id of ids) if (id !== name && (s.fns.has(id) || s.vars.has(id) || (id.length > 1 && s.imports.has(id)))) visit(mod, id, false)
   }
   visit(modName, root, true)
   // Modules in dependency order: imported ones first.
@@ -336,13 +351,43 @@ export function findPlayer() {
       if (cand && PARSER.test(cand.code) && cand.code.includes('isMoving:')) rulesMod = cand
     }
   }
-  if (!rulesMod) throw new Error("the app's player code has changed shape: no parser found")
-  const rules = slice(rulesMod.code, '"http://www.w3.org/1999/xlink"', 'isMoving:')
-  const parser = PARSER.exec(rules ?? '')?.[1]
-  const element = /function (\w+)\(e\)\{return!\(e\.namespaceURI===/.exec(rules ?? '')?.[1]
-  const attr = /function (\w+)\(e,t\)\{let\{namespaceURI:n,localName:r,value:i\}=t;/.exec(rules ?? '')?.[1]
-  const css = /function (\w+)\(e\)\{if\(e\.includes\("\\\\"\)/.exec(rules ?? '')?.[1]
-  if (!rules || !parser || !element || !attr || !css) throw new Error("the app's player code has changed shape: the list")
+  let rules
+  let parser
+  let element
+  let attr
+  let css
+  if (rulesMod) {
+    rules = slice(rulesMod.code, '"http://www.w3.org/1999/xlink"', 'isMoving:')
+    parser = PARSER.exec(rules ?? '')?.[1]
+    element = /function (\w+)\(e\)\{return!\(e\.namespaceURI===/.exec(rules ?? '')?.[1]
+    attr = /function (\w+)\(e,t\)\{let\{namespaceURI:n,localName:r,value:i\}=t;/.exec(rules ?? '')?.[1]
+    css = /function (\w+)\(e\)\{if\(e\.includes\("\\\\"\)/.exec(rules ?? '')?.[1]
+  }
+  if (!rules || !parser || !element || !attr || !css) {
+    rulesMod = null
+    // Since 2026-11-16 the module first strips what the list drops (comments, some elements and
+    // attributes), parses the result again and checks every element of it; the parser may be a
+    // `var` (2026-11-18). Each function is lifted out with what it uses, as an expression.
+    const NEW_PARSER = /(?:function (\w+)\(e\)|var (\w+)=\(function\(e\))\{let t;try\{t=new DOMParser\(\)\.parseFromString\(e,"image\/svg\+xml"\)/
+    for (const m of backdrop.code.matchAll(/from"\.\/([^"]+)"/g)) {
+      const cand = modules.get(m[1])
+      if (cand && NEW_PARSER.test(cand.code) && cand.code.includes('isMoving:')) rulesMod = cand
+    }
+    if (!rulesMod) throw new Error("the app's player code has changed shape: no parser found")
+    const code = rulesMod.code
+    const at = code.indexOf('return{markup:n,isMoving:')
+    const parse = at < 0 ? undefined : [...code.slice(0, at).matchAll(/function (\w+)\(e\)\{/g)].pop()?.[1]
+    const el = /function (\w+)\(e\)\{return \w+\(e\)\|\|!\w+\.has\(e\.localName\)/.exec(code)?.[1]
+    const at1 = /function (\w+)\(e\)\{let\{namespaceURI:t,localName:n,value:r\}=e;/.exec(code)?.[1]
+    const cs = /function (\w+)\(e\)\{if\(e\.includes\("\\\\"\)/.exec(code)?.[1]
+    if (!parse || !el || !at1 || !cs) throw new Error("the app's player code has changed shape: the list")
+    rules = ''
+    parser = extract(modules, rulesMod.name, parse, { short: true })
+    element = extract(modules, rulesMod.name, el, { short: true })
+    attr = '((f)=>(e,t)=>f(t))(' + extract(modules, rulesMod.name, at1, { short: true }) + ')'
+    css = extract(modules, rulesMod.name, cs, { short: true })
+  }
+  if (rules === undefined || rules === null || !parser || !element || !attr || !css) throw new Error("the app's player code has changed shape: the list")
   // The flash detector's counter factory.
   let flash
   let counter
@@ -355,10 +400,18 @@ export function findPlayer() {
     shape = 'one script (to 2026-11-14)'
   } else {
     const m = /function (\w+)\(e=-1\/0\)\{let t=\[\],n=new Uint8Array\(\w+\),r=new Int32Array\(\d+\);return\{count:/.exec(backdrop.code)
-    if (!m) throw new Error("the app's player code has changed shape: no flash detector")
-    counter = m[1]
-    flash = extract(modules, backdrop.name, counter)
-    shape = 'player module ' + rulesMod.name + ' (2026-11-15 on)'
+    if (m) {
+      counter = m[1]
+      flash = extract(modules, backdrop.name, counter)
+      shape = 'player module ' + rulesMod.name + ' (2026-11-15 on)'
+    } else {
+      // Since 2026-11-16 the counter samples grids of cells instead of a 64 x 40 picture, and a
+      // frame reader (c.read) runs beside it; neither is lifted out yet, so only the list, the
+      // parser and the frame-time limit are the app's own here.
+      flash = null
+      counter = null
+      shape = 'player module ' + rulesMod.name + ' (2026-11-16 on: list and limit only)'
+    }
   }
   // The time limit and the window it averages over.
   let limitMs

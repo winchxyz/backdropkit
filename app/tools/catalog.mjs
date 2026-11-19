@@ -78,6 +78,13 @@ export const THEMES = [
     about: 'A residential lane running down to a level crossing, with the roofs of the lower town and the bay beyond.',
   },
   {
+    slug: 'gas-station',
+    name: 'Gas Station',
+    line: 'A roadside gas station whose price board shows your Claude figures.',
+    about:
+      "A desert gas station by the highway. Its price board shows this chat's tokens, how full the context is and how much of the weekly limit is used. Clouds drift, a pickup passes now and then, and at night moths circle the canopy lights.",
+  },
+  {
     slug: 'deep-reef',
     name: 'Deep Reef',
     line: 'Under the water, light falling from above.',

@@ -3,6 +3,7 @@
   "private": true,
   "description": "Animated pixel-art themes for the Claude Code desktop app",
   "license": "MIT",
+  "type": "module",
   "scripts": {
     "site": "node site/build.mjs",
     "serve": "node site/serve.mjs",

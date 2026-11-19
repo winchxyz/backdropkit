@@ -39,6 +39,7 @@ import { HERO_ORDER, MOMENT_NAMES, MOMENT_ORDER, MOMENT_OVERRIDES, REPO, THEMES 
 import { archiveEntries, heroOf, themeJs } from '../editor/lib/archive.js'
 import { glassOf, stillOf } from '../editor/lib/look.js'
 import { unzip as unzipBytes, zip as zipBytes } from '../editor/lib/zip.js'
+import { checkBoard, fillBoard, MARKER, SAMPLE } from './board.mjs'
 
 export { glassOf }
 const deflate = b => zlib.deflateRawSync(b, { level: 9 })
@@ -149,6 +150,27 @@ function scenesOf(slug) {
     if (text.includes('\uFFFD')) throw new Error(`${slug}: ${name} is not valid UTF-8`)
     return { ...s, text }
   })
+}
+
+// The theme's price board, prototypes/<slug>/out/board.json (engine/theme-mod/hooks/board.js),
+// or undefined for a theme without one. Checked against its scenes: each holds the marker once,
+// has its digits' colour, and stays within the player's limit with the widest figures in.
+const WIDEST = { tokens: 888.8e6, context: 100, weekly: 100 }
+function boardOf(slug, scenes) {
+  const file = path.join(PROTOS, slug, 'out', 'board.json')
+  if (!fs.existsSync(file)) return undefined
+  const board = JSON.parse(fs.readFileSync(file, 'utf8'))
+  const problems = checkBoard(board)
+  for (const sc of scenes) {
+    const id = sc.id || 'scene'
+    if (sc.text.split(MARKER).length !== 2) problems.push(`${id}: the board marker must be in the scene once`)
+    if (!(sc.id in board.ink)) problems.push(`${id}: no ink colour for this moment`)
+    // The motion clock (register.tsx, sceneAt) takes up to about 20 characters more.
+    const filled = fillBoard(sc.text, board, sc.id, WIDEST)
+    if (filled.length + 20 > SCENE_LIMIT) problems.push(`${id}: ${filled.length} characters with the board filled, over the player's ${SCENE_LIMIT}`)
+  }
+  if (problems.length) throw new Error(`${slug}: board.json: ${problems.join('; ')}`)
+  return board
 }
 
 /* ---------- Stills: tone and glass ---------- */
@@ -271,9 +293,11 @@ async function packTheme(theme, outDir) {
   const scenes = scenesOf(s)
   const single = scenes.length === 1 && scenes[0].id === ''
   const starts = startHours(s, scenes.map(x => x.id))
+  const board = boardOf(s, scenes)
   const moments = []
   for (const sc of scenes) {
-    const st = await still(sc.text)
+    // A board's still (the preview, the tone and the glass) shows sample figures.
+    const st = await still(board ? fillBoard(sc.text, board, sc.id, SAMPLE) : sc.text)
     const name = momentName(s, sc.id)
     moments.push({
       id: sc.id,
@@ -292,9 +316,10 @@ async function packTheme(theme, outDir) {
   moments.sort((a, b) => a.start - b.start)
 
   // theme.js, checked: imported as a module, every scene must come back exactly as its file.
-  const js = themeJs(theme, moments)
+  const js = themeJs(theme, moments, { board })
   const mod = await import('data:text/javascript;base64,' + Buffer.from(js).toString('base64'))
   if (mod.THEME.slug !== s || mod.THEME.moments.length !== moments.length) throw new Error(`${s}: theme.js check: shape`)
+  if (JSON.stringify(mod.THEME.board) !== JSON.stringify(board)) throw new Error(`${s}: theme.js check: board`)
   for (const [i, m] of moments.entries()) {
     const back = mod.THEME.moments[i]
     if (back.svg !== m.text || back.id !== m.id || back.start !== m.start) throw new Error(`${s}: theme.js check: ${m.id || 'scene'}`)
@@ -304,7 +329,7 @@ async function packTheme(theme, outDir) {
   // The template, with theme.js made from these moments and the slug stamped into the six
   // command names of register.tsx (editor/lib/archive.js, shared with the editor's exporter).
   const hookFiles = Object.fromEntries(fs.readdirSync(TEMPLATE).filter(f => f !== 'theme.js' && fs.statSync(path.join(TEMPLATE, f)).isFile()).map(f => [f, fs.readFileSync(path.join(TEMPLATE, f))]))
-  const entries = archiveEntries({ theme, moments, hookFiles, preview: heroOf(moments, HERO_ORDER).png, project: '{}\n', by: 'packer', repo: REPO, heroOrder: HERO_ORDER })
+  const entries = archiveEntries({ theme, moments, hookFiles, preview: heroOf(moments, HERO_ORDER).png, project: '{}\n', by: 'packer', repo: REPO, heroOrder: HERO_ORDER, board })
   checkClean(s, entries)
   const buf = zip(entries)
   // Read it back: every name and byte must survive.

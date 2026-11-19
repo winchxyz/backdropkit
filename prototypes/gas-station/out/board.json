@@ -1,0 +1,36 @@
+{
+  "yo": 0,
+  "rows": [
+    {
+      "id": "tokens",
+      "x": 257,
+      "y": 68,
+      "w": 28,
+      "align": "right"
+    },
+    {
+      "id": "context",
+      "x": 257,
+      "y": 88,
+      "w": 28,
+      "align": "right"
+    },
+    {
+      "id": "weekly",
+      "x": 257,
+      "y": 108,
+      "w": 28,
+      "align": "right"
+    }
+  ],
+  "ink": {
+    "day": "#ffb52e",
+    "sunset": "#ffc23e",
+    "night": "#ffc44a"
+  },
+  "halo": {
+    "day": "#3a1c10",
+    "sunset": "#6a2a0e",
+    "night": "#7a2e0a"
+  }
+}

@@ -7,12 +7,19 @@
 // /<theme>-off takes it off (in new sessions too), /<theme>-on puts it back, and
 // /<theme>-time previews another moment or time of day.
 //
+// A theme with a price board (THEME.board; Gas Station) draws three live figures into its
+// scene: the tokens this chat has used, how full the context window is, and how much of the
+// weekly limit is used. They come from the app's own usage figures; nothing leaves the
+// computer.
+//
 // This file is the same in every BackdropKit theme but for the theme's name in its three
 // commands, written in where they are registered and answered so that claude plugin validate
 // reads each as a command the module answers itself. What else differs is theme.js, written
 // by the BackdropKit packer: the theme's name, its moments and their scenes.
-import type { Register, ThemeSetArgs } from 'claude-code'
+import type { Register, SessionContextUsage, SessionRateLimit, ThemeSetArgs, TurnUsage } from 'claude-code'
 
+import { fillBoard, textsOf } from './board.js'
+import type { Figures } from './board.js'
 import { BLUR, COLORS, NIGHT_COLORS } from './colors.js'
 import { makeColors } from './make-colors.js'
 import { THEME } from './theme.js'
@@ -89,6 +96,52 @@ function sceneAt(svg: string, ms: number, lead = 0.2): string {
   return out.length <= SCENE_LIMIT ? out : svg
 }
 
+// The price board. The tokens are each finished turn's usage summed (the main loop's and every
+// subagent's, cache reads included, as the API counts them), kept for each chat in the store so
+// a resumed chat carries on from its count; a chat begun before the theme was installed counts
+// from then. The context and the weekly limit are the engine's latest readings; the last weekly
+// one is kept until its window resets, so a new chat shows it before its first answer.
+const BOARD = THEME.board
+const TOKENS_KEY = 'tokens:'
+const WEEKLY_KEY = 'weekly'
+// How many chats' counts the store keeps; the oldest go first.
+const KEEP_CHATS = 60
+
+let figures: Figures = {}
+let tokensKey: string | undefined
+
+// Takes `next` as the figures; true when what the board shows changed.
+function setFigures(next: Figures): boolean {
+  const before = JSON.stringify(textsOf(figures))
+  figures = next
+  return JSON.stringify(textsOf(next)) !== before
+}
+
+type Reading = { context: SessionContextUsage; rateLimits: readonly SessionRateLimit[] }
+const weekOf = (r: Reading) => r.rateLimits.find(l => l.kind === 'seven_day')
+
+// The figures with a usage reading's context and weekly limit; a reading without one keeps
+// the figure there was.
+function withReading(r: Reading): Figures {
+  return { ...figures, context: r.context.percent ?? figures.context, weekly: weekOf(r)?.percentUsed ?? figures.weekly }
+}
+
+const tokensOf = (u: TurnUsage) => u.input_tokens + u.output_tokens + u.cache_read_input_tokens + u.cache_creation_input_tokens
+
+// The scene of moment `m` with its board filled in, when the theme has one and it fits.
+function sceneOf(m: Moment): string {
+  if (BOARD === undefined) return m.svg
+  const filled = fillBoard(m.svg, BOARD, m.id, figures)
+  return filled.length <= SCENE_LIMIT ? filled : m.svg
+}
+
+// What the scene shows, with the board's figures in words.
+function altOf(m: Moment): string {
+  if (BOARD === undefined) return m.alt
+  const t = textsOf(figures)
+  return m.alt + ' The price board reads ' + t.tokens + ' tokens, ' + t.context + ' context, ' + t.weekly + ' of the weekly limit.'
+}
+
 // How often the moment and the glass are checked against the clock, so a moment changes at
 // most this long after its hour.
 const RESYNC_MS = 5 * 60 * 1000
@@ -143,6 +196,29 @@ export const register: Register = on => {
     } catch {
       off = false
     }
+    if (BOARD !== undefined) {
+      try {
+        tokensKey = TOKENS_KEY + (await $.session.id())
+        const n = await $.store.get(tokensKey)
+        figures = { ...figures, tokens: typeof n === 'number' && Number.isFinite(n) ? n : 0 }
+        const counts = (await $.store.keys()).filter(k => k.startsWith(TOKENS_KEY) && k !== tokensKey)
+        for (const k of counts.slice(0, Math.max(0, counts.length - KEEP_CHATS + 1))) await $.store.delete(k)
+      } catch {
+        // No count to carry on from: the board shows dashes until the first turn ends.
+      }
+      try {
+        const w = (await $.store.get(WEEKLY_KEY)) as { percent?: unknown; resetsAt?: unknown } | undefined
+        const resets = typeof w?.resetsAt === 'string' ? Date.parse(w.resetsAt) : NaN
+        if (typeof w?.percent === 'number' && !(resets <= clockAt)) figures = { ...figures, weekly: w.percent }
+      } catch {
+        // None kept.
+      }
+      try {
+        figures = withReading(await $.session.usage())
+      } catch {
+        // No reading yet: the next measurement brings one.
+      }
+    }
     $.clock.every(RESYNC_MS, () => {
       $.clock
         .now()
@@ -181,7 +257,31 @@ export const register: Register = on => {
     if (e.surface !== 'desktop' && e.surface !== 'mobile') return next(e)
     const { Svg } = $.ui.resolve(e)
     const m = shown ?? momentAt(now())
-    return <Svg source={sceneAt(m.svg, now())} alt={m.alt} isInteractive />
+    return <Svg source={sceneAt(sceneOf(m), now())} alt={altOf(m)} isInteractive />
+  })
+
+  // The board's figures: the context and the weekly limit at each measurement, the tokens at
+  // the end of each turn. The scene is drawn again only when what the board shows changes.
+  on('session.measure', async ($, e, next) => {
+    if (BOARD !== undefined) {
+      const week = weekOf(e)
+      if (week !== undefined && e.changed.includes('rateLimits')) {
+        $.store.set(WEEKLY_KEY, { percent: week.percentUsed, resetsAt: week.resetsAt }).catch(() => undefined)
+      }
+      if (setFigures(withReading(e)) && !off) $.ui.invalidate('ui.render')
+    }
+    return next(e)
+  })
+
+  on('turn.complete', async ($, e, next) => {
+    const result = await next(e)
+    const used = BOARD !== undefined && e.usage !== undefined ? tokensOf(e.usage) : 0
+    if (used > 0) {
+      const changed = setFigures({ ...figures, tokens: (figures.tokens ?? 0) + used })
+      if (tokensKey !== undefined) $.store.set(tokensKey, figures.tokens).catch(() => undefined)
+      if (changed && !off) $.ui.invalidate('ui.render')
+    }
+    return result
   })
 
   // /<theme>-time: when each moment plays; with a moment or a time, the scene and the glass

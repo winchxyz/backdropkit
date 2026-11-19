@@ -1,7 +1,7 @@
 {
   "harbor": {
     "zip": "harbor.zip",
-    "bytes": 158313,
+    "bytes": 164764,
     "version": "0.1.0",
     "moments": [
       {
@@ -32,7 +32,7 @@
   },
   "snowfall-ridge": {
     "zip": "snowfall-ridge.zip",
-    "bytes": 152587,
+    "bytes": 159040,
     "version": "0.1.0",
     "moments": [
       {
@@ -63,7 +63,7 @@
   },
   "rainy-studio": {
     "zip": "rainy-studio.zip",
-    "bytes": 154706,
+    "bytes": 161158,
     "version": "0.1.0",
     "moments": [
       {
@@ -94,7 +94,7 @@
   },
   "low-orbit": {
     "zip": "low-orbit.zip",
-    "bytes": 204496,
+    "bytes": 210949,
     "version": "0.1.0",
     "moments": [
       {
@@ -117,7 +117,7 @@
   },
   "tide-line": {
     "zip": "tide-line.zip",
-    "bytes": 146494,
+    "bytes": 152946,
     "version": "0.1.0",
     "moments": [
       {
@@ -148,7 +148,7 @@
   },
   "cloud-sea": {
     "zip": "cloud-sea.zip",
-    "bytes": 154765,
+    "bytes": 161218,
     "version": "0.1.0",
     "moments": [
       {
@@ -179,7 +179,7 @@
   },
   "mirror-lake": {
     "zip": "mirror-lake.zip",
-    "bytes": 230987,
+    "bytes": 237441,
     "version": "0.1.0",
     "moments": [
       {
@@ -210,7 +210,7 @@
   },
   "lavender-slope": {
     "zip": "lavender-slope.zip",
-    "bytes": 167271,
+    "bytes": 173726,
     "version": "0.1.0",
     "moments": [
       {
@@ -241,7 +241,7 @@
   },
   "hill-village": {
     "zip": "hill-village.zip",
-    "bytes": 190119,
+    "bytes": 196570,
     "version": "0.1.0",
     "moments": [
       {
@@ -272,7 +272,7 @@
   },
   "sunbeam-wood": {
     "zip": "sunbeam-wood.zip",
-    "bytes": 419325,
+    "bytes": 425776,
     "version": "0.1.0",
     "moments": [
       {
@@ -303,7 +303,7 @@
   },
   "side-street": {
     "zip": "side-street.zip",
-    "bytes": 149944,
+    "bytes": 156395,
     "version": "0.1.0",
     "moments": [
       {
@@ -332,9 +332,40 @@
       }
     ]
   },
+  "gas-station": {
+    "zip": "gas-station.zip",
+    "bytes": 99631,
+    "version": "0.1.0",
+    "moments": [
+      {
+        "id": "day",
+        "name": "Day",
+        "start": 6,
+        "tone": "light",
+        "tint": "#dbe2ed",
+        "opacity": 0.5
+      },
+      {
+        "id": "sunset",
+        "name": "Sunset",
+        "start": 17,
+        "tone": "dark",
+        "tint": "#411b23",
+        "opacity": 0.6
+      },
+      {
+        "id": "night",
+        "name": "Night",
+        "start": 21,
+        "tone": "dark",
+        "tint": "#272024",
+        "opacity": 0.55
+      }
+    ]
+  },
   "deep-reef": {
     "zip": "deep-reef.zip",
-    "bytes": 155189,
+    "bytes": 161642,
     "version": "0.1.0",
     "moments": [
       {
@@ -349,7 +380,7 @@
   },
   "moon-keep": {
     "zip": "moon-keep.zip",
-    "bytes": 105626,
+    "bytes": 112079,
     "version": "0.1.0",
     "moments": [
       {

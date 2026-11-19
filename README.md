@@ -22,6 +22,7 @@ Made by [winchxyz](https://github.com/winchxyz). Community project, not affiliat
 | Hill Village | A village on a forested hillside | Sunrise, day, night |
 | Sunbeam Wood | Shafts of light in an old forest | Morning, day, night |
 | Side Street | A steep lane in a quiet seaside town | Day, evening, night |
+| Gas Station | A roadside gas station whose price board shows this chat's tokens, context fill and weekly limit | Day, sunset, night |
 | Deep Reef | Under the water, light falling from above | The same at every hour |
 | Moon Keep | A castle of spires under a full moon | The same at every hour |
 
@@ -62,7 +63,7 @@ Sunfield is its own project; its built archive is in `docs/themes/sunfield.zip`,
 
 **Editor:** https://winchxyz.github.io/backdropkit/editor/ (it also opens from the box at the bottom of the site)
 
-Start from one of the 14 themes, your own art (a picture, sprites, animated GIFs) or a blank scene. Stack layers, paint cell by cell, give your art a look (dither, palettes, pixel shapes, glyphs, outline), add motion and live effects, and give every colour its time of day. The editor checks each scene against the app's limits as you work and exports the same archive and install prompt as the themes above. It runs in your browser; your work stays on your computer.
+Start from any theme above except Gas Station, from your own art (a picture, sprites, animated GIFs) or a blank scene. Stack layers, paint cell by cell, give your art a look (dither, palettes, pixel shapes, glyphs, outline), add motion and live effects, and give every colour its time of day. The editor checks each scene against the app's limits as you work and exports the same archive and install prompt as the themes above. It runs in your browser; your work stays on your computer.
 
 The app plays pixel scenes only (no embedded pictures), so uploaded art always becomes cells on the 320 x 200 grid; the look decides how.
 

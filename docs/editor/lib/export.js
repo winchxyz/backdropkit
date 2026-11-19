@@ -42,10 +42,10 @@ export const FRAME_LIMIT_MS = 1000 / 60 / 3
 // The colour merges tried, in levels (the largest channel step a colour may move).
 export const MERGE_LEVELS = [0, 1, 2, 3, 4, 5, 6]
 // The site's own themes: a project with one of these slugs would install over it.
-export const SITE_SLUGS = ['cloud-sea', 'deep-reef', 'harbor', 'hill-village', 'lavender-slope', 'low-orbit', 'mirror-lake', 'moon-keep', 'rainy-studio', 'side-street', 'snowfall-ridge', 'sunbeam-wood', 'sunfield', 'tide-line']
+export const SITE_SLUGS = ['cloud-sea', 'deep-reef', 'gas-station', 'harbor', 'hill-village', 'lavender-slope', 'low-orbit', 'mirror-lake', 'moon-keep', 'rainy-studio', 'side-street', 'snowfall-ridge', 'sunbeam-wood', 'sunfield', 'tide-line']
 // The theme template's files (engine/theme-mod/hooks/), which the browser fetches from
 // docs/editor/mod/hooks/ and passes to buildArchive as modFiles.
-export const MOD_FILES = ['colors.d.ts', 'colors.js', 'hooks.json', 'make-colors.d.ts', 'make-colors.js', 'register.test.tsx', 'register.tsx', 'theme.d.ts']
+export const MOD_FILES = ['board.d.ts', 'board.js', 'colors.d.ts', 'colors.js', 'hooks.json', 'make-colors.d.ts', 'make-colors.js', 'register.test.tsx', 'register.tsx', 'theme.d.ts']
 
 // The encoder's settings for every part (as Harbor's): T 28, paths of more than 21 and less
 // than 120 cells across span at most 19 rows, no outer-edge backing, three backings tried. The
