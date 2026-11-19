@@ -1,5 +1,7 @@
 # BackdropKit
 
+[![Featured on Agent Skins](https://agentskins.app/badge/creator/winch.svg)](https://agentskins.app/creators/winch)
+
 Animated pixel-art themes for the Claude Code desktop app. A theme plays behind your conversation, follows your clock from night to day, and tints the app's panels to match.
 
 **Site:** https://winchxyz.github.io/backdropkit/ (pick a theme, download it, copy the install prompt)
